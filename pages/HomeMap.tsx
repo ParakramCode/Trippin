@@ -39,14 +39,7 @@ const HomeMap: React.FC = () => {
 
     const handleStopSelect = (stop: Stop) => {
         setSelectedStopId(stop.id);
-        mapRef.current?.flyTo({
-            center: stop.coordinates,
-            zoom: 13.5,
-            speed: 1.0,
-            pitch: 50,
-            padding: { top: 0, bottom: 300, left: 0, right: 0 },
-            curve: 1.5
-        });
+        // Map flyTo is now handled by JourneyMap via useEffect
     };
 
     if (!activeJourney || !activeJourney.stops) {

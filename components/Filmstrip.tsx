@@ -10,37 +10,30 @@ interface FilmstripProps {
 
 const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }) => {
     const containerRef = React.useRef<HTMLDivElement>(null);
-    const observerRef = React.useRef<IntersectionObserver | null>(null);
+    const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-    React.useEffect(() => {
-        const options = {
-            root: containerRef.current,
-            threshold: 0.6
-        };
+    const handleScroll = React.useCallback(() => {
+        if (containerRef.current) {
+            const container = containerRef.current;
+            const scrollLeft = container.scrollLeft;
+            const width = container.clientWidth;
 
-        const callback: IntersectionObserverCallback = (entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    const stopId = entry.target.getAttribute('data-stop-id');
-                    const stop = stops.find(s => s.id === stopId);
+            // Debounce the selection update to prevent jumping while swiping
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
 
-                    // Only trigger select if it's a different stop to prevent loops
-                    // AND if we are not currently scrolling programmatically (simplified check)
+            scrollTimeoutRef.current = setTimeout(() => {
+                const index = Math.round(scrollLeft / width);
+                if (index >= 0 && index < stops.length) {
+                    const stop = stops[index];
                     if (stop && stop.id !== selectedStopId) {
-                        // Debounce logic is handled by the parent's state update or could be added here if needed.
-                        setTimeout(() => onSelect(stop), 150);
+                        onSelect(stop);
                     }
                 }
-            });
-        };
-
-        observerRef.current = new IntersectionObserver(callback, options);
-
-        const cards = containerRef.current?.querySelectorAll('.filmstrip-card');
-        cards?.forEach(card => observerRef.current?.observe(card));
-
-        return () => observerRef.current?.disconnect();
-    }, [stops, onSelect]); // Removed selectedStopId from deps to avoid re-attaching observer constantly
+            }, 100); // 100ms debounce
+        }
+    }, [stops, selectedStopId, onSelect]);
 
     // Effect to scroll to the selected card when map selection changes
     React.useEffect(() => {
@@ -53,39 +46,55 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }
     }, [selectedStopId]);
 
     return (
-        <div className="fixed bottom-24 left-0 right-0 z-50 mb-4 px-4">
+        <div className="fixed bottom-20 left-0 right-0 z-40 h-36 pointer-events-none flex items-center justify-center">
+            {/* 
+               The 'Single-Source' Strategy:
+               1. Outer wrapper is fixed width (screen).
+               2. Inner scroll container is w-full.
+               3. Cards are w-full (minus padding).
+               This forces a strict slideshow logic.
+             */}
             <div
-                className="bg-white/60 backdrop-blur-2xl border border-white/20 p-4 rounded-[32px] shadow-2xl shadow-black/5 h-64 overflow-y-hidden"
+                className="w-full h-full pointer-events-auto"
                 onPointerDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
             >
                 <div
                     ref={containerRef}
-                    className="flex space-x-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide py-2 h-full items-center touch-pan-x overscroll-x-contain"
+                    onScroll={handleScroll}
+                    className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide items-center touch-pan-x"
                 >
                     {stops.map((stop) => (
                         <div
                             key={stop.id}
                             data-stop-id={stop.id}
-                            className={`filmstrip-card snap-center flex-shrink-0 w-full h-full rounded-[24px] overflow-hidden bg-white/40 border border-white/30 backdrop-blur-sm transition-all duration-500 relative flex flex-row ${selectedStopId === stop.id ? 'ring-1 ring-black/5' : ''
-                                }`}
-                            style={{ flex: '0 0 100%' }}
+                            className="snap-center flex-shrink-0 w-full h-full px-4 flex items-center justify-center" // Padding here creates the 'margin' visually
+                            style={{ flex: '0 0 100%' }} // Force 100% width
                         >
-                            <div className="w-1/2 h-full relative overflow-hidden">
-                                <img
-                                    src={stop.imageUrl}
-                                    alt={stop.name}
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
+                            <div
+                                className={`
+                                    w-full max-w-sm h-full bg-white/60 backdrop-blur-2xl border border-white/20 rounded-[24px] shadow-2xl shadow-black/5 overflow-hidden flex flex-row
+                                    ${selectedStopId === stop.id ? 'ring-1 ring-black/5' : ''}
+                                `}
+                            >
+                                {/* Image (Left Side) - Fixed Aspect */}
+                                <div className="w-1/3 h-full relative overflow-hidden">
+                                    <img
+                                        src={stop.imageUrl}
+                                        alt={stop.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
 
-                            <div className="w-1/2 p-4 flex flex-col justify-center text-left">
-                                <h3 className="text-brand-dark text-xl font-serif font-bold tracking-tight mb-2">
-                                    {stop.name}
-                                </h3>
-                                <p className="text-slate-600 text-xs font-sans leading-relaxed line-clamp-4">
-                                    {stop.description || "Explore this amazing location."}
-                                </p>
+                                {/* Content (Right Side) */}
+                                <div className="w-2/3 p-4 flex flex-col justify-center text-left">
+                                    <h3 className="text-brand-dark text-base font-serif font-bold tracking-tight mb-1 truncate">
+                                        {stop.name}
+                                    </h3>
+                                    <p className="text-slate-600 text-[11px] font-sans leading-relaxed line-clamp-3">
+                                        {stop.description || "Explore this amazing location."}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     ))}

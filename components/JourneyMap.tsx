@@ -115,6 +115,23 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
         fetchDirections();
     }, [stops, mapboxToken]);
 
+    // Fly to selected stop
+    React.useEffect(() => {
+        if (selectedStopId && ref && 'current' in ref && ref.current) {
+            const stop = stops.find(s => s.id === selectedStopId);
+            if (stop) {
+                ref.current.flyTo({
+                    center: stop.coordinates,
+                    zoom: 14,
+                    speed: 1.2, // Slightly slower for boutique feel
+                    curve: 1.5,
+                    duration: 2000,
+                    essential: true
+                });
+            }
+        }
+    }, [selectedStopId, stops, ref]);
+
     return (
         <>
             <Map
