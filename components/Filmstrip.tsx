@@ -23,10 +23,11 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }
                 if (entry.isIntersecting) {
                     const stopId = entry.target.getAttribute('data-stop-id');
                     const stop = stops.find(s => s.id === stopId);
-                    if (stop) {
+
+                    // Only trigger select if it's a different stop to prevent loops
+                    // AND if we are not currently scrolling programmatically (simplified check)
+                    if (stop && stop.id !== selectedStopId) {
                         // Debounce logic is handled by the parent's state update or could be added here if needed.
-                        // For direct simplicity as per instruction, we just trigger select.
-                        // However, to strictly follow "debounce of 150ms" request:
                         setTimeout(() => onSelect(stop), 150);
                     }
                 }
@@ -39,7 +40,17 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }
         cards?.forEach(card => observerRef.current?.observe(card));
 
         return () => observerRef.current?.disconnect();
-    }, [stops, onSelect]);
+    }, [stops, onSelect]); // Removed selectedStopId from deps to avoid re-attaching observer constantly
+
+    // Effect to scroll to the selected card when map selection changes
+    React.useEffect(() => {
+        if (selectedStopId && containerRef.current) {
+            const selectedCard = containerRef.current.querySelector(`[data-stop-id="${selectedStopId}"]`);
+            if (selectedCard) {
+                selectedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
+    }, [selectedStopId]);
 
     return (
         <div className="fixed bottom-24 left-0 right-0 z-50 mb-4 px-4">

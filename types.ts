@@ -6,6 +6,14 @@ export interface Journey {
   duration: string;
   imageUrl: string;
   stops?: Stop[];
+  moments?: Moment[];
+}
+
+export interface Moment {
+  id: string;
+  coordinates: [number, number];
+  imageUrl: string;
+  caption: string;
 }
 
 export interface Stop {

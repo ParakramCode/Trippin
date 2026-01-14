@@ -70,7 +70,10 @@ const HomeMap: React.FC = () => {
             <JourneyMap
                 ref={mapRef}
                 stops={activeJourney.stops}
+                moments={activeJourney.moments}
                 mapboxToken={VITE_MAPBOX_TOKEN}
+                selectedStopId={selectedStopId}
+                onStopSelect={handleStopSelect}
             />
 
             {/* Minimalist Floating Header */}

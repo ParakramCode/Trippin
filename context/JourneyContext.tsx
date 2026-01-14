@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { Journey, Stop } from '../types';
+import { Journey, Stop, Moment } from '../types';
 
 interface JourneyContextType {
   journeys: Journey[];
@@ -24,6 +24,11 @@ const mockStopsBigSur: Stop[] = [
   { id: '6', name: 'McWay Falls', coordinates: [-121.6706, 36.1576], imageUrl: 'https://picsum.photos/seed/mcway/300/200', description: 'Stunning tidefall that empties directly into the ocean.' },
 ];
 
+const mockMomentsSF: Moment[] = [
+  { id: 'm1', coordinates: [-122.45, 37.8], imageUrl: 'https://picsum.photos/seed/moment1/100/100', caption: 'Hidden trail view' },
+  { id: 'm2', coordinates: [-122.50, 37.87], imageUrl: 'https://picsum.photos/seed/moment2/100/100', caption: 'Coffee stop' }
+];
+
 const defaultJourneys: Journey[] = [
   {
     id: '1',
@@ -31,7 +36,8 @@ const defaultJourneys: Journey[] = [
     location: 'California, USA',
     duration: '3 Days',
     imageUrl: 'https://picsum.photos/seed/coast/800/1200',
-    stops: mockStopsSF
+    stops: mockStopsSF,
+    moments: mockMomentsSF
   },
   {
     id: '2',
@@ -39,7 +45,8 @@ const defaultJourneys: Journey[] = [
     location: 'California, USA',
     duration: '2 Days',
     imageUrl: 'https://picsum.photos/seed/bigsur/800/1200',
-    stops: mockStopsBigSur
+    stops: mockStopsBigSur,
+    moments: []
   }
 ];
 
