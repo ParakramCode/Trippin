@@ -5,6 +5,7 @@ export interface Journey {
   location: string;
   duration: string;
   imageUrl: string;
+  stops?: Stop[];
 }
 
 export interface Stop {

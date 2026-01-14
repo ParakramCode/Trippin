@@ -1,39 +1,80 @@
 
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { Journey } from '../types';
+import { Journey, Stop } from '../types';
 
 interface JourneyContextType {
   journeys: Journey[];
   addJourney: () => void;
   activeJourney: Journey | null;
   setActiveJourney: (journey: Journey) => void;
+  loadJourney: (journeyId: string) => void;
 }
 
 const JourneyContext = createContext<JourneyContextType | undefined>(undefined);
 
-const defaultAmalfiJourney: Journey = {
-  id: '1',
-  title: 'Amalfi Coast',
-  location: 'Italy',
-  duration: '7 Days',
-  imageUrl: 'https://picsum.photos/seed/amalfi/800/1200',
-};
+const mockStopsSF: Stop[] = [
+  { id: '1', name: 'San Francisco', coordinates: [-122.4194, 37.7749], imageUrl: 'https://picsum.photos/seed/sf/300/200', description: 'Iconic city by the bay featuring the Golden Gate Bridge.' },
+  { id: '2', name: 'Sausalito', coordinates: [-122.4853, 37.8591], imageUrl: 'https://picsum.photos/seed/sau/300/200', description: 'Charming seaside town with stunning skyline views.' },
+  { id: '3', name: 'Muir Woods', coordinates: [-122.5811, 37.8970], imageUrl: 'https://picsum.photos/seed/muir/300/200', description: 'Ancient redwood forest offering peaceful hiking trails.' },
+];
+
+const mockStopsBigSur: Stop[] = [
+  { id: '4', name: 'Monterey', coordinates: [-121.8947, 36.6002], imageUrl: 'https://picsum.photos/seed/monterey/300/200', description: 'Historic cannery row and world-class aquarium.' },
+  { id: '5', name: 'Bixby Bridge', coordinates: [-121.9017, 36.3715], imageUrl: 'https://picsum.photos/seed/bixby/300/200', description: 'Famous arch bridge with breathtaking coastal views.' },
+  { id: '6', name: 'McWay Falls', coordinates: [-121.6706, 36.1576], imageUrl: 'https://picsum.photos/seed/mcway/300/200', description: 'Stunning tidefall that empties directly into the ocean.' },
+];
+
+const defaultJourneys: Journey[] = [
+  {
+    id: '1',
+    title: 'Northern Coast',
+    location: 'California, USA',
+    duration: '3 Days',
+    imageUrl: 'https://picsum.photos/seed/coast/800/1200',
+    stops: mockStopsSF
+  },
+  {
+    id: '2',
+    title: 'Big Sur Escape',
+    location: 'California, USA',
+    duration: '2 Days',
+    imageUrl: 'https://picsum.photos/seed/bigsur/800/1200',
+    stops: mockStopsBigSur
+  }
+];
 
 export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [journeys, setJourneys] = useState<Journey[]>([defaultAmalfiJourney]);
-  const [activeJourney, setActiveJourney] = useState<Journey | null>(null);
+  const [journeys, setJourneys] = useState<Journey[]>(defaultJourneys);
+
+  // Initialize activeJourney from localStorage if available, otherwise default to first journey
+  const [activeJourney, setActiveJourney] = useState<Journey | null>(() => {
+    const savedId = localStorage.getItem('activeJourneyId');
+    if (savedId) {
+      const found = defaultJourneys.find(j => j.id === savedId);
+      if (found) return found;
+    }
+    return defaultJourneys[0];
+  });
 
   const addJourney = useCallback(() => {
     const newJourney: Journey = {
-      ...defaultAmalfiJourney,
-      id: Date.now().toString(), // Simple unique ID
-      title: `${defaultAmalfiJourney.title} #${journeys.length}`,
+      ...defaultJourneys[0],
+      id: Date.now().toString(),
+      title: `Custom Trip to ${defaultJourneys[0].title} #${journeys.length + 1}`,
       imageUrl: `https://picsum.photos/seed/${Date.now()}/800/1200`
     };
     setJourneys(prevJourneys => [...prevJourneys, newJourney]);
   }, [journeys.length]);
 
-  const value = { journeys, addJourney, activeJourney, setActiveJourney };
+  const loadJourney = useCallback((journeyId: string) => {
+    const journey = journeys.find(j => j.id === journeyId);
+    if (journey) {
+      setActiveJourney(journey);
+      localStorage.setItem('activeJourneyId', journey.id);
+    }
+  }, [journeys]);
+
+  const value = { journeys, addJourney, activeJourney, setActiveJourney, loadJourney };
 
   return (
     <JourneyContext.Provider value={value}>
