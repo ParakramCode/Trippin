@@ -27,9 +27,11 @@ const Discover: React.FC = () => {
     setSelectedStopId(stop.id);
     mapRef.current?.flyTo({
       center: stop.coordinates,
-      zoom: 12,
-      speed: 1.2,
-      pitch: 45, // Keeping pitch for 3D effect as it wasn't explicitly revoked, but speed/zoom overrides previous duration
+      zoom: 13.5,
+      speed: 1.0,
+      pitch: 50,
+      padding: { top: 0, bottom: 300, left: 0, right: 0 }, // Offset map to frame the road segment above the filmstrip
+      curve: 1.5
     });
   };
 

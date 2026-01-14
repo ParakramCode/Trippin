@@ -10,21 +10,42 @@ interface JourneyMapProps {
 }
 
 const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, mapboxToken }, ref) => {
-    const routeGeoJSON: FeatureCollection<LineString> = useMemo(() => {
-        return {
-            type: 'FeatureCollection',
-            features: [
-                {
-                    type: 'Feature',
-                    properties: {},
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: stops.map((stop) => stop.coordinates),
-                    },
-                },
-            ],
+    const [routeGeoJSON, setRouteGeoJSON] = React.useState<FeatureCollection<LineString> | null>(null);
+    const [isLoadingRoute, setIsLoadingRoute] = React.useState(false);
+
+    React.useEffect(() => {
+        const fetchDirections = async () => {
+            if (stops.length < 2) return;
+            setIsLoadingRoute(true);
+
+            // Construct coordinates string "lng,lat;lng,lat..."
+            const coordinates = stops.map(s => s.coordinates.join(',')).join(';');
+            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?geometries=geojson&access_token=${mapboxToken}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.routes && data.routes[0]) {
+                    const route = data.routes[0].geometry;
+                    setRouteGeoJSON({
+                        type: 'FeatureCollection',
+                        features: [{
+                            type: 'Feature',
+                            properties: {},
+                            geometry: route
+                        }]
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching directions:", error);
+            } finally {
+                setIsLoadingRoute(false);
+            }
         };
-    }, [stops]);
+
+        fetchDirections();
+    }, [stops, mapboxToken]);
 
     return (
         <Map
@@ -38,22 +59,25 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, mapboxToken }, 
             mapStyle="mapbox://styles/mapbox/streets-v9"
             mapboxAccessToken={mapboxToken}
         >
-            <Source id="route-source" type="geojson" data={routeGeoJSON}>
-                <Layer
-                    id="route-line"
-                    type="line"
-                    layout={{
-                        'line-join': 'round',
-                        'line-cap': 'round',
-                    }}
-                    paint={{
-                        'line-color': '#000000',
-                        'line-width': 2,
-                        'line-dasharray': [2, 2],
-                        'line-opacity': 0.7
-                    }}
-                />
-            </Source>
+            {routeGeoJSON && (
+                <Source id="route-source" type="geojson" data={routeGeoJSON}>
+                    <Layer
+                        id="route-line"
+                        type="line"
+                        layout={{
+                            'line-join': 'round',
+                            'line-cap': 'round',
+                        }}
+                        paint={{
+                            'line-color': '#000000',
+                            'line-width': 4,
+                            'line-blur': 0.5,
+                            'line-opacity': 0.8,
+                            'line-dasharray': [0, 1.5]
+                        }}
+                    />
+                </Source>
+            )}
 
             {stops.map((stop) => (
                 <Marker
@@ -62,7 +86,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, mapboxToken }, 
                     latitude={stop.coordinates[1]}
                     anchor="bottom"
                 >
-                    <div className="w-4 h-4 bg-black rounded-full border-2 border-white shadow-md hover:scale-125 transition-transform cursor-pointer" />
+                    <div className={`w-4 h-4 bg-black rounded-full border-2 border-white shadow-md hover:scale-125 transition-transform cursor-pointer ${isLoadingRoute ? 'animate-pulse' : ''}`} />
                 </Marker>
             ))}
         </Map>
