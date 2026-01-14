@@ -12,4 +12,5 @@ export interface Stop {
   name: string;
   coordinates: [number, number]; // [longitude, latitude]
   imageUrl: string;
+  description?: string;
 }

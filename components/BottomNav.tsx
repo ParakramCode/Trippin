@@ -14,8 +14,13 @@ const BottomNav: React.FC = () => {
   const inactiveLinkClass = 'text-gray-400 hover:text-brand-dark';
 
   return (
-    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] h-20 bg-white/60 backdrop-blur-2xl border border-white/20 shadow-2xl shadow-black/5 rounded-[40px] z-50">
-      <div className="h-full flex justify-around items-center px-6">
+    <nav
+      className="fixed bottom-4 left-4 right-4 h-14 bg-white/80 backdrop-blur-xl border border-white/20 rounded-full shadow-xl shadow-black/5 z-50 flex items-center justify-center"
+      onPointerDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      style={{ touchAction: 'none' }}
+    >
+      <div className="w-full max-w-md flex justify-around items-center px-6 h-full">
         {navItems.map(({ path, label, icon: Icon }) => (
           <NavLink
             key={path}

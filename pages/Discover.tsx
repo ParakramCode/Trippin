@@ -10,11 +10,11 @@ const VITE_MAPBOX_TOKEN = "pk.eyJ1IjoicGFha2kyMDA2IiwiYSI6ImNta2NibDA2eDBkZ3czZH
 
 // Mock Data
 const STOPS: Stop[] = [
-  { id: '1', name: 'San Francisco', coordinates: [-122.4194, 37.7749], imageUrl: 'https://picsum.photos/seed/sf/300/200' },
-  { id: '2', name: 'Sausalito', coordinates: [-122.4853, 37.8591], imageUrl: 'https://picsum.photos/seed/sau/300/200' },
-  { id: '3', name: 'Muir Woods', coordinates: [-122.5811, 37.8970], imageUrl: 'https://picsum.photos/seed/muir/300/200' },
-  { id: '4', name: 'Stinson Beach', coordinates: [-122.6445, 37.9005], imageUrl: 'https://picsum.photos/seed/stinson/300/200' },
-  { id: '5', name: 'Point Reyes', coordinates: [-122.8817, 38.0049], imageUrl: 'https://picsum.photos/seed/reyes/300/200' },
+  { id: '1', name: 'San Francisco', coordinates: [-122.4194, 37.7749], imageUrl: 'https://picsum.photos/seed/sf/300/200', description: 'Iconic city by the bay featuring the Golden Gate Bridge.' },
+  { id: '2', name: 'Sausalito', coordinates: [-122.4853, 37.8591], imageUrl: 'https://picsum.photos/seed/sau/300/200', description: 'Charming seaside town with stunning skyline views.' },
+  { id: '3', name: 'Muir Woods', coordinates: [-122.5811, 37.8970], imageUrl: 'https://picsum.photos/seed/muir/300/200', description: 'Ancient redwood forest offering peaceful hiking trails.' },
+  { id: '4', name: 'Stinson Beach', coordinates: [-122.6445, 37.9005], imageUrl: 'https://picsum.photos/seed/stinson/300/200', description: 'Popular white sand beach perfect for a relaxing day trip.' },
+  { id: '5', name: 'Point Reyes', coordinates: [-122.8817, 38.0049], imageUrl: 'https://picsum.photos/seed/reyes/300/200', description: 'Dramatic coastline with a historic lighthouse and wildlife.' },
 ];
 
 
