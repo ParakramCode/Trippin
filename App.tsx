@@ -16,8 +16,8 @@ const App: React.FC = () => {
       <main className="pb-24">
         <ErrorBoundary>
           <Routes>
-            <Route path="/" element={<HomeMap />} />
-            <Route path="/discover" element={<Discover />} />
+            <Route path="/" element={<Discover />} />
+            <Route path="/map" element={<HomeMap />} />
             <Route path="/my-trips" element={<MyTrips />} />
             <Route path="/planner/:id" element={<Planner />} />
             <Route path="/profile" element={<Profile />} />

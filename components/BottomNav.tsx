@@ -5,8 +5,8 @@ import { CompassIcon, BookOpenIcon, UserIcon, HomeIcon } from './icons';
 
 const BottomNav: React.FC = () => {
   const navItems = [
-    { path: '/', label: 'Home', icon: HomeIcon },
-    { path: '/discover', label: 'Discover', icon: CompassIcon },
+    { path: '/', label: 'Discover', icon: CompassIcon },
+    { path: '/map', label: 'Map', icon: HomeIcon },
     { path: '/my-trips', label: 'Journeys', icon: BookOpenIcon },
     { path: '/profile', label: 'Profile', icon: UserIcon },
   ];

@@ -8,7 +8,7 @@ const Discover: React.FC = () => {
 
   const handleJourneyClick = (journeyId: string) => {
     loadJourney(journeyId); // Sets the active journey
-    navigate('/'); // Navigate to Home Map
+    navigate('/map'); // Navigate to Home Map
   };
 
   return (

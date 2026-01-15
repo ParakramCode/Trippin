@@ -54,20 +54,15 @@ const HomeMap: React.FC = () => {
         setSelectedStopId(stop.id);
     };
 
+    // Redirect if no active journey
+    useEffect(() => {
+        if (!activeJourney || !activeJourney.stops) {
+            navigate('/', { replace: true });
+        }
+    }, [activeJourney, navigate]);
+
     if (!activeJourney || !activeJourney.stops) {
-        return (
-            <div className="flex items-center justify-center h-screen bg-brand-beige">
-                <div className="text-center">
-                    <h2 className="text-2xl font-serif text-brand-dark mb-4">No Active Journey</h2>
-                    <button
-                        onClick={() => navigate('/discover')}
-                        className="px-6 py-3 bg-brand-dark text-white rounded-full font-medium shadow-lg hover:shadow-xl transition-shadow"
-                    >
-                        Discover Journeys
-                    </button>
-                </div>
-            </div>
-        );
+        return null; // Render nothing while redirecting
     }
 
     return (
