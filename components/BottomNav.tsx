@@ -1,12 +1,12 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { CompassIcon, BookOpenIcon, UserIcon, HomeIcon } from './icons';
+import { CompassIcon, BookOpenIcon, UserIcon, HomeIcon, MapPinIcon } from './icons';
 
 const BottomNav: React.FC = () => {
   const navItems = [
     { path: '/', label: 'Discover', icon: CompassIcon },
-    { path: '/map', label: 'Map', icon: HomeIcon },
+    { path: '/map', label: 'Map', icon: MapPinIcon },
     { path: '/my-trips', label: 'Journeys', icon: BookOpenIcon },
     { path: '/profile', label: 'Profile', icon: UserIcon },
   ];
