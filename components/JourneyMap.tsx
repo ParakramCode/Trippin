@@ -88,7 +88,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
 
             // Construct coordinates string "lng,lat;lng,lat..."
             const coordinates = stops.map(s => s.coordinates.join(',')).join(';');
-            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?geometries=geojson&access_token=${mapboxToken}`;
+            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?geometries=geojson&overview=full&access_token=${mapboxToken}`;
 
             try {
                 const response = await fetch(url);
@@ -123,9 +123,9 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                 ref.current.flyTo({
                     center: stop.coordinates,
                     zoom: 14,
-                    speed: 1.2, // Slightly slower for boutique feel
+                    speed: 0.8, // Slower flight for relaxed feel
                     curve: 1.5,
-                    duration: 2000,
+                    duration: 3000, // 3s duration for cinematic feel
                     essential: true
                 });
             }
@@ -142,7 +142,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                     zoom: 14,
                 }}
                 style={{ width: '100%', height: '100%' }}
-                mapStyle="mapbox://styles/mapbox/streets-v9"
+                mapStyle="mapbox://styles/mapbox/light-v11"
                 mapboxAccessToken={mapboxToken}
                 onMove={onMove} // Update bounds for clustering
             >
@@ -156,11 +156,9 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                                 'line-cap': 'round',
                             }}
                             paint={{
-                                'line-color': '#000000',
-                                'line-width': 4,
-                                'line-blur': 0.5,
+                                'line-color': '#2D3748', // Dark charcoal
+                                'line-width': 3,
                                 'line-opacity': 0.8,
-                                'line-dasharray': [0, 1.5]
                             }}
                         />
                     </Source>
@@ -172,18 +170,6 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                     const { cluster: isCluster, point_count: pointCount } = cluster.properties;
 
                     if (isCluster) {
-                        // Get the first image for thumbnail
-                        // We can't easily get properties of leaves directly from 'cluster' object without leaves query 
-                        // UNLESS we used map/reduce options in supercluster config.
-                        // For now, simpler: user wants "thumbnail of the first image".
-                        // Without map/reduce, we can't get it cheaply.
-                        // Let's implement map/reduce properties in useSupercluster if needed, OR just fetch leaves for rendering (expensive?)
-                        // Actually, let's just use a generic cluster look OR fetch one leaf.
-                        // Optimized: Supercluster supports `map` and `reduce`
-                        // But useSupercluster hook interface?
-                        // Let's just create a sleek count badge for now, or try to get properties.
-                        // Correction: useSupercluster options argument allows map/reduce.
-
                         return (
                             <Marker
                                 key={`cluster-${cluster.id}`}
@@ -205,7 +191,6 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                     }
 
                     // Single Moment
-                    // 'cluster' here acts as the pointfeature
                     const moment = moments.find(m => m.id === cluster.properties.momentId);
                     if (!moment) return null;
 
@@ -247,8 +232,13 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                             ${selectedStopId === stop.id ? 'z-50 scale-125' : 'z-10 hover:scale-110'}
                         `}
                         >
+                            {/* Pulse Ripple for Active State */}
+                            {selectedStopId === stop.id && (
+                                <div className="absolute inset-0 -m-2 rounded-full border-2 border-brand-accent/40 animate-ping" />
+                            )}
+
                             {/* Circle Image */}
-                            <div className={`w-12 h-12 rounded-full border-[3px] border-white shadow-[0_8px_20px_rgba(0,0,0,0.2)] overflow-hidden bg-white
+                            <div className={`w-12 h-12 rounded-full border-[3px] border-white shadow-[0_12px_24px_rgba(0,0,0,0.4)] overflow-hidden bg-white
                                       ${selectedStopId === stop.id ? 'ring-4 ring-brand-accent ring-offset-2 scale-110' : ''}
                         `}>
                                 <img
@@ -262,15 +252,11 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                             <div className={`w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] -mt-1 drop-shadow-sm transition-colors duration-300
                                 ${selectedStopId === stop.id ? 'border-t-brand-accent' : 'border-t-white'}
                             `}></div>
-
-                            {/* Pulse effect while route loads (on active marker only to reduce noise) */}
-                            {isLoadingRoute && selectedStopId === stop.id && (
-                                <div className="absolute top-0 w-12 h-12 rounded-full bg-brand-accent/30 animate-ping" />
-                            )}
                         </div>
                     </Marker>
                 ))}
             </Map>
+
 
             <MomentModal
                 isOpen={isModalOpen}
