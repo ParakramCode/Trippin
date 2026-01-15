@@ -13,9 +13,28 @@ interface JourneyContextType {
   activeJourney: Journey | null;
   setActiveJourney: (journey: Journey) => void;
   loadJourney: (journeyId: string) => void;
+  userLocation: [number, number] | null;
+  isFollowing: boolean;
+  setIsFollowing: (v: boolean) => void;
 }
 
 const JourneyContext = createContext<JourneyContextType | undefined>(undefined);
+
+const useLocationWatcher = (callback: (coords: [number, number]) => void) => {
+  React.useEffect(() => {
+    if (!('geolocation' in navigator)) return;
+    const id = navigator.geolocation.watchPosition(
+      (position) => {
+        callback([position.coords.longitude, position.coords.latitude]);
+      },
+      (error) => console.error('Location error:', error),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [callback]);
+};
+
+// ... (existing mocks) ...
 
 const mockStopsSF: Stop[] = [
   { id: '1', name: 'San Francisco', coordinates: [-122.4194, 37.7749], imageUrl: 'https://picsum.photos/seed/sf/300/200', description: 'Iconic city by the bay featuring the Golden Gate Bridge.' },
@@ -113,7 +132,14 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [journeys, plannerJourneys]);
 
-  const value = { journeys, plannerJourneys, addJourney, persistJourney, cloneToPlanner, removeFromPlanner, activeJourney, setActiveJourney, loadJourney };
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  useLocationWatcher(useCallback((coords) => {
+    setUserLocation(coords);
+  }, []));
+
+  const value = { journeys, plannerJourneys, addJourney, persistJourney, cloneToPlanner, removeFromPlanner, activeJourney, setActiveJourney, loadJourney, userLocation, isFollowing, setIsFollowing };
 
   return (
     <JourneyContext.Provider value={value}>
