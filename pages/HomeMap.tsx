@@ -82,24 +82,8 @@ const HomeMap: React.FC = () => {
                 onStopSelect={handleStopSelect}
             />
 
-            {/* Header */}
-            <div className="absolute top-6 left-6 z-20">
-                <div className="bg-white/60 backdrop-blur-xl rounded-full px-6 py-3 shadow-2xl shadow-black/5 border border-white/20">
-                    <h1 className="font-serif text-xl font-bold tracking-tight text-brand-dark">{activeJourney.title}</h1>
-                </div>
-            </div>
-
-            {/* Toast Notification */}
-            {toastMessage && (
-                <div className="absolute top-20 right-6 z-30 animate-in fade-in slide-in-from-top-4 duration-300">
-                    <div className="bg-gray-900/90 backdrop-blur-md text-white px-4 py-2 rounded-lg shadow-xl text-sm font-medium border border-white/10">
-                        {toastMessage}
-                    </div>
-                </div>
-            )}
-
             {/* Copy/Clone Button */}
-            <div className="absolute top-6 right-6 z-20">
+            <div className="absolute top-12 right-6 z-20">
                 <button
                     onClick={handleCloneClick}
                     className={`

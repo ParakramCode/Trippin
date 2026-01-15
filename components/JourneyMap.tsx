@@ -243,13 +243,13 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                         }}
                     >
                         <div
-                            className={`relative group cursor-pointer transition-all duration-300 flex flex-col items-center
+                            className={`relative group cursor-pointer transition-all duration-500 ease-boutique flex flex-col items-center
                             ${selectedStopId === stop.id ? 'z-50 scale-125' : 'z-10 hover:scale-110'}
                         `}
                         >
                             {/* Circle Image */}
-                            <div className={`w-10 h-10 rounded-full border-2 border-white shadow-md overflow-hidden bg-white
-                                      ${selectedStopId === stop.id ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
+                            <div className={`w-12 h-12 rounded-full border-[3px] border-white shadow-[0_8px_20px_rgba(0,0,0,0.2)] overflow-hidden bg-white
+                                      ${selectedStopId === stop.id ? 'ring-4 ring-brand-accent ring-offset-2 scale-110' : ''}
                         `}>
                                 <img
                                     src={stop.imageUrl}
@@ -259,11 +259,13 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                             </div>
 
                             {/* Triangle Pointer */}
-                            <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white -mt-1 drop-shadow-sm"></div>
+                            <div className={`w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] -mt-1 drop-shadow-sm transition-colors duration-300
+                                ${selectedStopId === stop.id ? 'border-t-brand-accent' : 'border-t-white'}
+                            `}></div>
 
                             {/* Pulse effect while route loads (on active marker only to reduce noise) */}
                             {isLoadingRoute && selectedStopId === stop.id && (
-                                <div className="absolute top-0 w-10 h-10 rounded-full bg-white/50 animate-ping" />
+                                <div className="absolute top-0 w-12 h-12 rounded-full bg-brand-accent/30 animate-ping" />
                             )}
                         </div>
                     </Marker>

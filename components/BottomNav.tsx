@@ -16,7 +16,7 @@ const BottomNav: React.FC = () => {
 
   return (
     <nav
-      className="fixed bottom-4 left-4 right-4 h-14 bg-white/80 backdrop-blur-xl border border-white/20 rounded-full shadow-xl shadow-black/5 z-50 flex items-center justify-center"
+      className="fixed bottom-4 left-4 right-4 h-16 bg-white/70 backdrop-blur-xl border border-white/40 rounded-[40px] shadow-2xl shadow-black/10 z-50 flex items-center justify-center transition-all duration-500 ease-boutique"
       onPointerDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
       style={{ touchAction: 'none' }}

@@ -46,7 +46,7 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }
     }, [selectedStopId]);
 
     return (
-        <div className="fixed bottom-20 left-0 right-0 z-40 h-36 pointer-events-none flex items-center justify-center">
+        <div className="fixed bottom-24 left-0 right-0 z-40 h-36 pointer-events-none flex items-center justify-center">
             {/* 
                The 'Single-Source' Strategy:
                1. Outer wrapper is fixed width (screen).
@@ -73,8 +73,8 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }
                         >
                             <div
                                 className={`
-                                    w-full max-w-sm h-full bg-white/60 backdrop-blur-2xl border border-white/20 rounded-[24px] shadow-2xl shadow-black/5 overflow-hidden flex flex-row
-                                    ${selectedStopId === stop.id ? 'ring-1 ring-black/5' : ''}
+                                    w-full max-w-sm h-full bg-white/70 backdrop-blur-xl border border-white/40 rounded-[32px] shadow-xl shadow-black/5 overflow-hidden flex flex-row transition-all duration-500 ease-boutique
+                                    ${selectedStopId === stop.id ? 'ring-2 ring-brand-accent/50 scale-[1.02]' : 'hover:scale-[1.01]'}
                                 `}
                             >
                                 {/* Image (Left Side) - Fixed Aspect */}
@@ -88,10 +88,10 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }
 
                                 {/* Content (Right Side) */}
                                 <div className="w-2/3 p-4 flex flex-col justify-center text-left">
-                                    <h3 className="text-brand-dark text-base font-serif font-bold tracking-tight mb-1 truncate">
+                                    <h3 className="text-brand-dark text-lg font-serif font-bold tracking-tight mb-1 truncate">
                                         {stop.name}
                                     </h3>
-                                    <p className="text-slate-600 text-[11px] font-sans leading-relaxed line-clamp-3">
+                                    <p className="text-slate-500 text-xs font-sans leading-relaxed line-clamp-3">
                                         {stop.description || "Explore this amazing location."}
                                     </p>
                                 </div>
