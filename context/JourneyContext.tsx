@@ -1,10 +1,12 @@
-
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { Journey, Stop, Moment } from '../types';
+import useLocalStorage from '../hooks/useLocalStorage';
 
 interface JourneyContextType {
   journeys: Journey[];
+  plannerJourneys: Journey[];
   addJourney: () => void;
+  persistJourney: (journey: Journey) => void;
   activeJourney: Journey | null;
   setActiveJourney: (journey: Journey) => void;
   loadJourney: (journeyId: string) => void;
@@ -52,13 +54,17 @@ const defaultJourneys: Journey[] = [
 
 export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [journeys, setJourneys] = useState<Journey[]>(defaultJourneys);
+  const [plannerJourneys, setPlannerJourneys] = useLocalStorage<Journey[]>('trippin_planner_journeys', []);
 
   // Initialize activeJourney from localStorage if available, otherwise default to first journey
   const [activeJourney, setActiveJourney] = useState<Journey | null>(() => {
     const savedId = localStorage.getItem('activeJourneyId');
     if (savedId) {
+      // Check if saved ID exists in default journeys
       const found = defaultJourneys.find(j => j.id === savedId);
       if (found) return found;
+
+      // Also check planner journeys if needed in future (requires access to hook state here)
     }
     return defaultJourneys[0];
   });
@@ -73,15 +79,24 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     setJourneys(prevJourneys => [...prevJourneys, newJourney]);
   }, [journeys.length]);
 
+  const persistJourney = useCallback((journey: Journey) => {
+    const newJourney = {
+      ...journey,
+      clonedAt: Date.now()
+    };
+    setPlannerJourneys(prev => [newJourney, ...prev]);
+  }, [setPlannerJourneys]);
+
   const loadJourney = useCallback((journeyId: string) => {
-    const journey = journeys.find(j => j.id === journeyId);
+    const allJourneys = [...journeys, ...plannerJourneys];
+    const journey = allJourneys.find(j => j.id === journeyId);
     if (journey) {
       setActiveJourney(journey);
       localStorage.setItem('activeJourneyId', journey.id);
     }
-  }, [journeys]);
+  }, [journeys, plannerJourneys]);
 
-  const value = { journeys, addJourney, activeJourney, setActiveJourney, loadJourney };
+  const value = { journeys, plannerJourneys, addJourney, persistJourney, activeJourney, setActiveJourney, loadJourney };
 
   return (
     <JourneyContext.Provider value={value}>

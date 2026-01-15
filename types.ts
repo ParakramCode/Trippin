@@ -7,6 +7,7 @@ export interface Journey {
   imageUrl: string;
   stops?: Stop[];
   moments?: Moment[];
+  clonedAt?: number;
 }
 
 export interface Moment {
