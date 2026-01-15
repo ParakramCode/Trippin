@@ -8,6 +8,7 @@ export interface Journey {
   stops?: Stop[];
   moments?: Moment[];
   clonedAt?: number;
+  clonedFrom?: string;
 }
 
 export interface Moment {

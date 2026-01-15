@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { Journey, Stop, Moment } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
@@ -7,6 +8,8 @@ interface JourneyContextType {
   plannerJourneys: Journey[];
   addJourney: () => void;
   persistJourney: (journey: Journey) => void;
+  cloneToPlanner: (journey: Journey) => void;
+  removeFromPlanner: (journeyId: string) => void;
   activeJourney: Journey | null;
   setActiveJourney: (journey: Journey) => void;
   loadJourney: (journeyId: string) => void;
@@ -31,7 +34,7 @@ const mockMomentsSF: Moment[] = [
   { id: 'm2', coordinates: [-122.50, 37.87], imageUrl: 'https://picsum.photos/seed/moment2/100/100', caption: 'Coffee stop' }
 ];
 
-const defaultJourneys: Journey[] = [
+export const defaultJourneys: Journey[] = [
   {
     id: '1',
     title: 'Northern Coast',
@@ -53,23 +56,24 @@ const defaultJourneys: Journey[] = [
 ];
 
 export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [journeys, setJourneys] = useState<Journey[]>(defaultJourneys);
+  const [journeys, setJourneys] = useState<Journey[]>(defaultJourneys || []);
   const [plannerJourneys, setPlannerJourneys] = useLocalStorage<Journey[]>('trippin_planner_journeys', []);
 
   // Initialize activeJourney from localStorage if available, otherwise default to first journey
   const [activeJourney, setActiveJourney] = useState<Journey | null>(() => {
     const savedId = localStorage.getItem('activeJourneyId');
     if (savedId) {
-      // Check if saved ID exists in default journeys
-      const found = defaultJourneys.find(j => j.id === savedId);
+      // Check default journeys (safely)
+      const found = (defaultJourneys || []).find(j => j.id === savedId);
       if (found) return found;
-
-      // Also check planner journeys if needed in future (requires access to hook state here)
+      // Check planner journeys? Can't access plannerJourneys hook state here directly in initializer easily without double render or effect.
+      // But we can check if we want full persistence. For now, rely on default.
     }
-    return defaultJourneys[0];
+    return (defaultJourneys && defaultJourneys.length > 0) ? defaultJourneys[0] : null;
   });
 
   const addJourney = useCallback(() => {
+    if (!defaultJourneys || defaultJourneys.length === 0) return;
     const newJourney: Journey = {
       ...defaultJourneys[0],
       id: Date.now().toString(),
@@ -87,6 +91,19 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     setPlannerJourneys(prev => [newJourney, ...prev]);
   }, [setPlannerJourneys]);
 
+  const cloneToPlanner = useCallback((journey: Journey) => {
+    const clone: Journey = structuredClone(journey);
+    clone.id = `planner-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    clone.clonedFrom = journey.id;
+    clone.clonedAt = Date.now();
+    clone.title = `Copy of ${journey.title}`;
+    setPlannerJourneys(prev => [clone, ...prev]);
+  }, [setPlannerJourneys]);
+
+  const removeFromPlanner = useCallback((journeyId: string) => {
+    setPlannerJourneys(prev => prev.filter(j => j.id !== journeyId));
+  }, [setPlannerJourneys]);
+
   const loadJourney = useCallback((journeyId: string) => {
     const allJourneys = [...journeys, ...plannerJourneys];
     const journey = allJourneys.find(j => j.id === journeyId);
@@ -96,7 +113,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [journeys, plannerJourneys]);
 
-  const value = { journeys, plannerJourneys, addJourney, persistJourney, activeJourney, setActiveJourney, loadJourney };
+  const value = { journeys, plannerJourneys, addJourney, persistJourney, cloneToPlanner, removeFromPlanner, activeJourney, setActiveJourney, loadJourney };
 
   return (
     <JourneyContext.Provider value={value}>
