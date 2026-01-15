@@ -1,5 +1,6 @@
 
 import React, { forwardRef, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import Map, { Source, Layer, Marker, MapRef } from 'react-map-gl/mapbox';
 import { Stop, Moment } from '../types';
 import type { FeatureCollection, LineString } from 'geojson';
@@ -227,19 +228,23 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                             onStopSelect(stop);
                         }}
                     >
-                        <div
-                            className={`relative group cursor-pointer transition-all duration-500 ease-boutique flex flex-col items-center
-                            ${selectedStopId === stop.id ? 'z-50 scale-125' : 'z-10 hover:scale-110'}
+                        <motion.div
+                            initial={false}
+                            animate={{ scale: selectedStopId === stop.id ? 1.15 : 0.8 }}
+                            whileHover={{ scale: 1.0 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                            className={`relative cursor-pointer flex flex-col items-center
+                            ${selectedStopId === stop.id ? 'z-50' : 'z-10'}
                         `}
                         >
                             {/* Pulse Ripple for Active State */}
                             {selectedStopId === stop.id && (
-                                <div className="absolute inset-0 -m-2 rounded-full border-2 border-brand-accent/40 animate-ping" />
+                                <div className="absolute inset-0 -m-3 rounded-full border-2 border-slate-800/30 animate-ping" />
                             )}
 
                             {/* Circle Image */}
-                            <div className={`w-12 h-12 rounded-full border-[3px] border-white shadow-[0_12px_24px_rgba(0,0,0,0.4)] overflow-hidden bg-white
-                                      ${selectedStopId === stop.id ? 'ring-4 ring-brand-accent ring-offset-2 scale-110' : ''}
+                            <div className={`w-12 h-12 rounded-full border-[3px] border-slate-50 shadow-[0_10px_15px_rgba(0,0,0,0.2)] overflow-hidden bg-white
+                                      ${selectedStopId === stop.id ? 'ring-[3px] ring-slate-800 ring-offset-2' : ''}
                         `}>
                                 <img
                                     src={stop.imageUrl}
@@ -249,10 +254,10 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                             </div>
 
                             {/* Triangle Pointer */}
-                            <div className={`w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] -mt-1 drop-shadow-sm transition-colors duration-300
-                                ${selectedStopId === stop.id ? 'border-t-brand-accent' : 'border-t-white'}
+                            <div className={`w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] -mt-[2px] drop-shadow-sm transition-colors duration-300
+                                ${selectedStopId === stop.id ? 'border-t-slate-800' : 'border-t-slate-50'}
                             `}></div>
-                        </div>
+                        </motion.div>
                     </Marker>
                 ))}
             </Map>

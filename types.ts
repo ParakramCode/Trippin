@@ -23,5 +23,6 @@ export interface Stop {
   name: string;
   coordinates: [number, number]; // [longitude, latitude]
   imageUrl: string;
+  images?: string[]; // Array of images for the gallery/postcard view
   description?: string;
 }
