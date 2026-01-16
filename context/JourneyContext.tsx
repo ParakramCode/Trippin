@@ -70,6 +70,58 @@ export const defaultJourneys: Journey[] = [
       { id: '6', name: 'McWay Falls', coordinates: [-121.6706, 36.1576], imageUrl: 'https://picsum.photos/seed/mcway/300/200', description: 'Stunning tidefall that empties directly into the ocean.' },
     ],
     moments: []
+  },
+  {
+    id: '3',
+    title: 'Spiti Valley Circuit',
+    location: 'Himachal Pradesh, India',
+    duration: '5 Days',
+    imageUrl: 'https://images.unsplash.com/photo-1593181829283-a4c3f5966601?q=80&w=800&auto=format&fit=crop',
+    stops: [
+      { id: '7', name: 'Kaza', coordinates: [78.0710, 32.2276], imageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=300', description: 'Remote capital of Spiti situated on the banks of Spiti River.' },
+      { id: '8', name: 'Key Monastery', coordinates: [78.0120, 32.2960], imageUrl: 'https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=300', description: 'Famous Tibetan Buddhist monastery perched on a hill.' },
+      { id: '9', name: 'Chandratal Lake', coordinates: [77.6100, 32.4800], imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=300', description: 'Crescent-shaped lake offering mesmerizing reflections.' }
+    ],
+    moments: []
+  },
+  {
+    id: '4',
+    title: 'Old Manali Trail',
+    location: 'Himachal Pradesh, India',
+    duration: '3 Days',
+    imageUrl: 'https://images.unsplash.com/photo-1589136777351-9432851982b6?q=80&w=800&auto=format&fit=crop',
+    stops: [
+      { id: '10', name: 'Hadimba Temple', coordinates: [77.1887, 32.2450], imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=300', description: 'Ancient cave temple dedicated to Hidimbi Devi.' },
+      { id: '11', name: 'Jogini Falls', coordinates: [77.1950, 32.2600], imageUrl: 'https://images.unsplash.com/photo-1589136777351-9432851982b6?w=300', description: 'Scenic path leading to a majestic waterfall.' },
+      { id: '12', name: 'Beas River', coordinates: [77.1800, 32.2300], imageUrl: 'https://images.unsplash.com/photo-1593181829283-a4c3f5966601?w=300', description: 'Riverside relaxation with stunning mountain backdrops.' }
+    ],
+    moments: []
+  },
+  {
+    id: '5',
+    title: 'Shimla to Kufri',
+    location: 'Himachal Pradesh, India',
+    duration: '2 Days',
+    imageUrl: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?q=80&w=800&auto=format&fit=crop',
+    stops: [
+      { id: '13', name: 'The Ridge', coordinates: [77.1734, 31.1048], imageUrl: 'https://images.unsplash.com/photo-1533470125816-724bc2f11c52?w=300', description: 'Hub of cultural activities with colonial architecture.' },
+      { id: '14', name: 'Jakhu Temple', coordinates: [77.1800, 31.1000], imageUrl: 'https://images.unsplash.com/photo-1626014902120-e22067711f98?w=300', description: 'Ancient temple dedicated to Lord Hanuman with panoramic views.' },
+      { id: '15', name: 'Himalayan Park', coordinates: [77.2600, 31.0900], imageUrl: 'https://images.unsplash.com/photo-1594896796245-0d0c64993a40?w=300', description: 'Nature park showcasing Himalayan flora and fauna.' }
+    ],
+    moments: []
+  },
+  {
+    id: '6',
+    title: 'Kasol Riverside',
+    location: 'Himachal Pradesh, India',
+    duration: '4 Days',
+    imageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?q=80&w=800&auto=format&fit=crop',
+    stops: [
+      { id: '16', name: 'Parvati River', coordinates: [77.3150, 32.0100], imageUrl: 'https://images.unsplash.com/photo-1504780521369-144d477b760a?w=300', description: 'Serene river flowing through the Parvati Valley.' },
+      { id: '17', name: 'Manikaran', coordinates: [77.3500, 32.0200], imageUrl: 'https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=300', description: 'Religious center famous for hot springs.' },
+      { id: '18', name: 'Tosh Village', coordinates: [77.4500, 32.0100], imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=300', description: 'Scenic village at the far end of the valley.' }
+    ],
+    moments: []
   }
 ];
 

@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { MapRef } from 'react-map-gl/mapbox';
 import JourneyMap from '../components/JourneyMap';
@@ -34,21 +35,18 @@ const HomeMap: React.FC = () => {
         }
     }, [activeJourney]);
 
-    const handleCloneClick = () => {
-        if (!activeJourney) return;
-
-        // Check if THIS specific journey instance is already in the planner
-        const alreadyInPlanner = plannerJourneys.some(j => j.id === activeJourney.id);
-
-        if (alreadyInPlanner) {
-            setToastMessage("Already in Planner");
-            setTimeout(() => setToastMessage(null), 2000);
-            return;
+    // Check for persistence
+    const [isSaved, setIsSaved] = useState(false);
+    useEffect(() => {
+        if (activeJourney) {
+            setIsSaved(plannerJourneys.some(j => j.id === activeJourney.id));
         }
+    }, [activeJourney, plannerJourneys]);
 
-        // Clone it
+    const handleAddToJourneys = () => {
+        if (!activeJourney) return;
         cloneToPlanner(activeJourney);
-        setToastMessage("Trip Cloned to Planner!");
+        setToastMessage("Added to My Journeys!");
         setTimeout(() => setToastMessage(null), 2000);
     };
 
@@ -79,23 +77,26 @@ const HomeMap: React.FC = () => {
                 onStopSelect={handleStopSelect}
             />
 
-            {/* Copy/Clone Button - Only show if NOT in navigation mode */}
-            {!isFollowing && (
+            {/* Add to My Journeys Button - Only show if NOT in navigation mode AND NOT saved */}
+            {!isFollowing && !isSaved && (
                 <div className="absolute top-12 right-6 z-20">
                     <button
-                        onClick={handleCloneClick}
+                        onClick={handleAddToJourneys}
                         className={`
-                            bg-white/60 backdrop-blur-xl rounded-full w-12 h-12 flex items-center justify-center 
+                            bg-white/60 backdrop-blur-xl rounded-full px-5 h-12 flex items-center justify-center gap-2
                             shadow-2xl shadow-black/5 border border-white/20 cursor-pointer 
                             hover:scale-105 active:scale-95 transition-all duration-200 group
-                            ${toastMessage === "Trip Cloned to Planner!" ? 'ring-2 ring-green-500 bg-green-50' : ''}
+                            ${toastMessage === "Added to My Journeys!" ? 'ring-2 ring-green-500 bg-green-50' : ''}
                         `}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
-                            className={`w-5 h-5 text-brand-dark group-hover:text-brand-accent transition-colors ${toastMessage === "Trip Cloned to Planner!" ? 'text-green-600' : ''}`}
+                            className={`w-5 h-5 text-brand-dark group-hover:text-brand-accent transition-colors ${toastMessage === "Added to My Journeys!" ? 'text-green-600' : ''}`}
                         >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
+                        <span className={`font-medium text-sm text-brand-dark group-hover:text-brand-accent transition-colors ${toastMessage === "Added to My Journeys!" ? 'text-green-600' : ''}`}>
+                            Add to My Journeys
+                        </span>
                     </button>
                 </div>
             )}
