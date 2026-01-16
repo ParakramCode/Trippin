@@ -19,7 +19,7 @@ interface JourneyMapProps {
 }
 
 const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], mapboxToken, selectedStopId, onStopSelect }, ref) => {
-    const { userLocation, userHeading, isFollowing, setIsFollowing, visitedStopIds, markStopAsVisited } = useJourneys();
+    const { userLocation, userHeading, isFollowing, setIsFollowing, visitedStopIds, markStopAsVisited, activeJourney } = useJourneys();
     const [routeGeoJSON, setRouteGeoJSON] = React.useState<FeatureCollection<LineString> | null>(null);
     const [isLoadingRoute, setIsLoadingRoute] = React.useState(false);
 
@@ -360,6 +360,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 moments={modalMoments}
+                author={activeJourney?.author}
             />
         </div>
     );

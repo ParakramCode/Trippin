@@ -1,3 +1,8 @@
+export interface Author {
+  name: string;
+  avatar: string;
+  bio?: string;
+}
 
 export interface Journey {
   id: string;
@@ -5,6 +10,7 @@ export interface Journey {
   location: string;
   duration: string;
   imageUrl: string;
+  author?: Author;
   stops?: Stop[];
   moments?: Moment[];
   clonedAt?: number;
@@ -16,6 +22,7 @@ export interface Moment {
   coordinates: [number, number];
   imageUrl: string;
   caption: string;
+  author?: Author;
 }
 
 export interface Stop {
@@ -25,4 +32,5 @@ export interface Stop {
   imageUrl: string;
   images?: string[]; // Array of images for the gallery/postcard view
   description?: string;
+  author?: Author;
 }
