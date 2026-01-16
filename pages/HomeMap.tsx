@@ -100,7 +100,7 @@ const HomeMap: React.FC = () => {
                 </div>
             )}
 
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" initial={false}>
                 {isFollowing ? (
                     <NavigationDrawer
                         key="nav-drawer"

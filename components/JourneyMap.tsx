@@ -161,7 +161,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                         openPostcard(closestIndex);
                     }
 
-                    onStopSelect(stop);
+                    onStopSelect(stop); // This is programmatic selection
                 }
             }
         }
@@ -203,22 +203,22 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
     // Fly to selected stop (Manual)
     React.useEffect(() => {
         if (selectedStopId && ref && 'current' in ref && ref.current) {
-            // Disable following if user manually selects a stop
-            setIsFollowing(false);
-
-            const stop = stops.find(s => s.id === selectedStopId);
-            if (stop) {
-                ref.current.flyTo({
-                    center: stop.coordinates,
-                    zoom: 14,
-                    speed: 0.8,
-                    curve: 1.5,
-                    duration: 3000,
-                    essential: true
-                });
+            // Only fly to stop if NOT following
+            if (!isFollowing) {
+                const stop = stops.find(s => s.id === selectedStopId);
+                if (stop) {
+                    ref.current.flyTo({
+                        center: stop.coordinates,
+                        zoom: 14,
+                        speed: 0.8,
+                        curve: 1.5,
+                        duration: 3000,
+                        essential: true
+                    });
+                }
             }
         }
-    }, [selectedStopId, stops, ref, setIsFollowing]);
+    }, [selectedStopId, stops, ref, isFollowing]);
 
     return (
         <div className="relative w-full h-full">
@@ -232,6 +232,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                 style={{ width: '100%', height: '100%' }}
                 mapStyle="mapbox://styles/mapbox/light-v11"
                 mapboxAccessToken={mapboxToken}
+                padding={isFollowing ? { left: 340, top: 20, bottom: 20, right: 20 } : { left: 0, top: 0, bottom: 0, right: 0 }}
                 onMove={onMove}
             >
                 {routeGeoJSON && (
@@ -306,6 +307,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                         anchor="bottom"
                         onClick={(e) => {
                             e.originalEvent.stopPropagation();
+                            setIsFollowing(false); // Manual interaction stops following
                             onStopSelect(stop);
                         }}
                     >

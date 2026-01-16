@@ -1,34 +1,29 @@
-
 import React from 'react';
 import { useJourneys } from '../context/JourneyContext';
 import { Journey } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 interface JourneyCardProps {
   journey: Journey;
 }
 
-const JourneyCard: React.FC<JourneyCardProps & { onClick: () => void }> = ({ journey, onClick }) => {
-  return (
-    <div onClick={onClick} className="block group overflow-hidden rounded-3xl shadow-sm hover:shadow-xl transition-shadow duration-300 ease-in-out cursor-pointer">
-      <div className="relative">
-        <img src={journey.imageUrl} alt={journey.title} className="w-full h-96 object-cover group-hover:scale-105 transition-transform duration-300" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-        <div className="absolute bottom-0 left-0 p-6 text-white">
-          <h3 className="font-serif text-3xl font-bold">{journey.title}</h3>
-          <p className="text-sm opacity-90">{journey.location} &bull; {journey.duration}</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const MyTrips: React.FC = () => {
-  const { journeys, plannerJourneys, removeFromPlanner, activeJourney, setActiveJourney } = useJourneys();
+  const { journeys, plannerJourneys, removeFromPlanner, activeJourney, setActiveJourney, setIsFollowing } = useJourneys();
   const navigate = useNavigate();
 
   const handleJourneyClick = (journey: Journey) => {
     setActiveJourney(journey);
+    setIsFollowing(false); // Default to inspection/plan mode
+    navigate('/map');
+  };
+
+  const handleStartNavigation = (e: React.MouseEvent, journey: Journey) => {
+    e.stopPropagation();
+    setActiveJourney(journey);
+    setIsFollowing(true); // Active Navigation Mode
+    // Logic to reset or set start index could go here. 
+    // For now we preserve visited state (Resume) or could reset.
     navigate('/map');
   };
 
@@ -80,9 +75,11 @@ const MyTrips: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {(plannerJourneys || []).map(journey => (
-                <div
+                <motion.div
                   key={journey.id}
                   onClick={() => handleJourneyClick(journey)}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
                   className="group relative block overflow-hidden rounded-[32px] shadow-sm hover:shadow-xl transition-all duration-300 ease-out cursor-pointer bg-white"
                 >
                   <div className="relative aspect-[4/3]">
@@ -92,7 +89,7 @@ const MyTrips: React.FC = () => {
                     {/* Remove Button */}
                     <button
                       onClick={(e) => handleDelete(e, journey.id)}
-                      className="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-red-500 hover:text-white transition-colors border border-white/20"
+                      className="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-red-500/80 hover:text-white transition-colors border border-white/20 z-20"
                       title="Remove from Planner"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -100,12 +97,27 @@ const MyTrips: React.FC = () => {
                       </svg>
                     </button>
 
+                    {/* View on Map Button (Glassmorphic) */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={(e) => handleStartNavigation(e, journey)}
+                      className="absolute bottom-24 right-6 z-20 flex items-center gap-2 pl-3 pr-4 py-2 bg-white/20 backdrop-blur-xl border border-white/30 rounded-full text-white font-medium text-sm shadow-2xl hover:bg-white/30 transition-all group/btn"
+                    >
+                      <div className="p-1.5 bg-indigo-500 rounded-full shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-white">
+                          <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <span>Live Journey</span>
+                    </motion.button>
+
                     <div className="absolute bottom-0 left-0 p-6 text-white w-full">
                       <h3 className="font-serif text-2xl font-bold mb-1 truncate">{journey.title}</h3>
                       <p className="text-xs font-medium tracking-wide uppercase opacity-80">{journey.location}</p>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
