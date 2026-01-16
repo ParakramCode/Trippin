@@ -46,19 +46,27 @@ const MyTrips: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 pb-24">
       <div className="max-w-4xl mx-auto">
-        <header className="mb-10 pt-4 relative">
-          <button
-            onClick={() => navigate(-1)}
-            className="absolute top-0 left-0 p-2 -ml-2 text-brand-dark/50 hover:text-brand-dark transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-          </button>
-          <div className="mt-12">
-            <h1 className="font-serif text-4xl font-bold text-brand-dark">My Journey</h1>
-            <p className="mt-2 text-gray-500">Your curated path through the world.</p>
+        <header className="mb-8 pt-8 flex items-end justify-between">
+          <div className="flex flex-col items-start gap-2">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 -ml-2 text-brand-dark/50 hover:text-brand-dark transition-colors rounded-full hover:bg-black/5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="font-serif text-3xl font-bold text-brand-dark leading-none">My Journey</h1>
+              <p className="mt-1 text-xs font-medium text-gray-400 tracking-wide uppercase">Your curated path</p>
+            </div>
           </div>
+
+          {activeJourney && (
+            <button onClick={handleResume} className="mb-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 tracking-widest uppercase border-b-2 border-indigo-100 hover:border-indigo-600 transition-all pb-0.5">
+              Resume Route
+            </button>
+          )}
         </header>
 
         {/* Planner Section */}
@@ -94,7 +102,7 @@ const MyTrips: React.FC = () => {
                       <img src={journey.imageUrl} alt={journey.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
 
                       {/* Gradient Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90 pointer-events-none" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90 pointer-events-none" />
 
                       {/* Top Controls */}
                       <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-30 pointer-events-none">

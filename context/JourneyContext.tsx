@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { Journey, Stop, Moment } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
@@ -120,6 +119,20 @@ export const defaultJourneys: Journey[] = [
       { id: '16', name: 'Parvati River', coordinates: [77.3150, 32.0100], imageUrl: 'https://images.unsplash.com/photo-1504780521369-144d477b760a?w=300', description: 'Serene river flowing through the Parvati Valley.' },
       { id: '17', name: 'Manikaran', coordinates: [77.3500, 32.0200], imageUrl: 'https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=300', description: 'Religious center famous for hot springs.' },
       { id: '18', name: 'Tosh Village', coordinates: [77.4500, 32.0100], imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=300', description: 'Scenic village at the far end of the valley.' }
+    ],
+    moments: []
+  },
+  {
+    id: '7',
+    title: 'Manali to Leh Highway',
+    location: 'Himachal & Ladakh, India',
+    duration: '2 Days',
+    imageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800',
+    stops: [
+      { id: '19', name: 'Rohtang Pass', coordinates: [77.2466, 32.3716], imageUrl: 'https://images.unsplash.com/photo-1595842878696-3c0f9k8j?w=300', description: 'High mountain pass connecting Kullu Valley with Lahaul and Spiti.' },
+      { id: '20', name: 'Keylong', coordinates: [77.0320, 32.5710], imageUrl: 'https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=300', description: 'Administrative center of Lahaul and Spiti.' },
+      { id: '21', name: 'Sarchu', coordinates: [77.5815, 32.9079], imageUrl: 'https://images.unsplash.com/photo-1533470125816-724bc2f11c52?w=300', description: 'Major halt point on the boundary of Himachal Pradesh and Ladakh.' },
+      { id: '22', name: 'Leh', coordinates: [77.5771, 34.1526], imageUrl: 'https://images.unsplash.com/photo-1626014902120-e22067711f98?w=300', description: 'Capital of Ladakh, known for its monasteries and landscapes.' }
     ],
     moments: []
   }

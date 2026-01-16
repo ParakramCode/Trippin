@@ -77,25 +77,30 @@ const HomeMap: React.FC = () => {
                 onStopSelect={handleStopSelect}
             />
 
-            {/* Add to My Journeys Button - Only show if NOT in navigation mode AND NOT saved */}
+            {/* Add to My Journeys Button - Minimalist Pill */}
             {!isFollowing && !isSaved && (
-                <div className="absolute top-12 right-6 z-20">
+                <div className="absolute top-6 right-6 z-20">
                     <button
                         onClick={handleAddToJourneys}
                         className={`
-                            bg-white/60 backdrop-blur-xl rounded-full px-5 h-12 flex items-center justify-center gap-2
-                            shadow-2xl shadow-black/5 border border-white/20 cursor-pointer 
-                            hover:scale-105 active:scale-95 transition-all duration-200 group
-                            ${toastMessage === "Added to My Journeys!" ? 'ring-2 ring-green-500 bg-green-50' : ''}
+                            px-4 py-2 rounded-full flex items-center gap-2
+                            bg-white/20 backdrop-blur-2xl border border-white/20 shadow-lg 
+                            hover:bg-white/30 hover:scale-105 active:scale-95 transition-all duration-200 
+                            group cursor-pointer
+                            ${toastMessage ? 'bg-emerald-500/10 border-emerald-500/30' : ''}
                         `}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
-                            className={`w-5 h-5 text-brand-dark group-hover:text-brand-accent transition-colors ${toastMessage === "Added to My Journeys!" ? 'text-green-600' : ''}`}
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        <span className={`font-medium text-sm text-brand-dark group-hover:text-brand-accent transition-colors ${toastMessage === "Added to My Journeys!" ? 'text-green-600' : ''}`}>
-                            Add to My Journeys
+                        {toastMessage ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-600">
+                                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                            </svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-slate-700 group-hover:text-slate-900">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                        )}
+                        <span className={`text-[12px] font-sans font-medium ${toastMessage ? 'text-emerald-700 font-bold' : 'text-slate-700'}`}>
+                            {toastMessage ? 'Saved' : 'Add to My Journeys'}
                         </span>
                     </button>
                 </div>
