@@ -14,18 +14,25 @@ interface JourneyContextType {
   setActiveJourney: (journey: Journey) => void;
   loadJourney: (journeyId: string) => void;
   userLocation: [number, number] | null;
+  userHeading: number | null;
   isFollowing: boolean;
   setIsFollowing: (v: boolean) => void;
+  visitedStopIds: string[];
+  markStopAsVisited: (stopId: string) => void;
 }
 
 const JourneyContext = createContext<JourneyContextType | undefined>(undefined);
 
-const useLocationWatcher = (callback: (coords: [number, number]) => void) => {
+const useLocationWatcher = (callback: (coords: [number, number], heading: number | null) => void) => {
   React.useEffect(() => {
     if (!('geolocation' in navigator)) return;
     const id = navigator.geolocation.watchPosition(
       (position) => {
-        callback([position.coords.longitude, position.coords.latitude]);
+        const heading = position.coords.heading;
+        callback(
+          [position.coords.longitude, position.coords.latitude],
+          heading
+        );
       },
       (error) => console.error('Location error:', error),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -34,25 +41,6 @@ const useLocationWatcher = (callback: (coords: [number, number]) => void) => {
   }, [callback]);
 };
 
-// ... (existing mocks) ...
-
-const mockStopsSF: Stop[] = [
-  { id: '1', name: 'San Francisco', coordinates: [-122.4194, 37.7749], imageUrl: 'https://picsum.photos/seed/sf/300/200', description: 'Iconic city by the bay featuring the Golden Gate Bridge.' },
-  { id: '2', name: 'Sausalito', coordinates: [-122.4853, 37.8591], imageUrl: 'https://picsum.photos/seed/sau/300/200', description: 'Charming seaside town with stunning skyline views.' },
-  { id: '3', name: 'Muir Woods', coordinates: [-122.5811, 37.8970], imageUrl: 'https://picsum.photos/seed/muir/300/200', description: 'Ancient redwood forest offering peaceful hiking trails.' },
-];
-
-const mockStopsBigSur: Stop[] = [
-  { id: '4', name: 'Monterey', coordinates: [-121.8947, 36.6002], imageUrl: 'https://picsum.photos/seed/monterey/300/200', description: 'Historic cannery row and world-class aquarium.' },
-  { id: '5', name: 'Bixby Bridge', coordinates: [-121.9017, 36.3715], imageUrl: 'https://picsum.photos/seed/bixby/300/200', description: 'Famous arch bridge with breathtaking coastal views.' },
-  { id: '6', name: 'McWay Falls', coordinates: [-121.6706, 36.1576], imageUrl: 'https://picsum.photos/seed/mcway/300/200', description: 'Stunning tidefall that empties directly into the ocean.' },
-];
-
-const mockMomentsSF: Moment[] = [
-  { id: 'm1', coordinates: [-122.45, 37.8], imageUrl: 'https://picsum.photos/seed/moment1/100/100', caption: 'Hidden trail view' },
-  { id: 'm2', coordinates: [-122.50, 37.87], imageUrl: 'https://picsum.photos/seed/moment2/100/100', caption: 'Coffee stop' }
-];
-
 export const defaultJourneys: Journey[] = [
   {
     id: '1',
@@ -60,8 +48,15 @@ export const defaultJourneys: Journey[] = [
     location: 'California, USA',
     duration: '3 Days',
     imageUrl: 'https://picsum.photos/seed/coast/800/1200',
-    stops: mockStopsSF,
-    moments: mockMomentsSF
+    stops: [
+      { id: '1', name: 'San Francisco', coordinates: [-122.4194, 37.7749], imageUrl: 'https://picsum.photos/seed/sf/300/200', description: 'Iconic city by the bay featuring the Golden Gate Bridge.' },
+      { id: '2', name: 'Sausalito', coordinates: [-122.4853, 37.8591], imageUrl: 'https://picsum.photos/seed/sau/300/200', description: 'Charming seaside town with stunning skyline views.' },
+      { id: '3', name: 'Muir Woods', coordinates: [-122.5811, 37.8970], imageUrl: 'https://picsum.photos/seed/muir/300/200', description: 'Ancient redwood forest offering peaceful hiking trails.' },
+    ],
+    moments: [
+      { id: 'm1', coordinates: [-122.45, 37.8], imageUrl: 'https://picsum.photos/seed/moment1/100/100', caption: 'Hidden trail view' },
+      { id: 'm2', coordinates: [-122.50, 37.87], imageUrl: 'https://picsum.photos/seed/moment2/100/100', caption: 'Coffee stop' }
+    ]
   },
   {
     id: '2',
@@ -69,7 +64,11 @@ export const defaultJourneys: Journey[] = [
     location: 'California, USA',
     duration: '2 Days',
     imageUrl: 'https://picsum.photos/seed/bigsur/800/1200',
-    stops: mockStopsBigSur,
+    stops: [
+      { id: '4', name: 'Monterey', coordinates: [-121.8947, 36.6002], imageUrl: 'https://picsum.photos/seed/monterey/300/200', description: 'Historic cannery row and world-class aquarium.' },
+      { id: '5', name: 'Bixby Bridge', coordinates: [-121.9017, 36.3715], imageUrl: 'https://picsum.photos/seed/bixby/300/200', description: 'Famous arch bridge with breathtaking coastal views.' },
+      { id: '6', name: 'McWay Falls', coordinates: [-121.6706, 36.1576], imageUrl: 'https://picsum.photos/seed/mcway/300/200', description: 'Stunning tidefall that empties directly into the ocean.' },
+    ],
     moments: []
   }
 ];
@@ -85,8 +84,6 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Check default journeys (safely)
       const found = (defaultJourneys || []).find(j => j.id === savedId);
       if (found) return found;
-      // Check planner journeys? Can't access plannerJourneys hook state here directly in initializer easily without double render or effect.
-      // But we can check if we want full persistence. For now, rely on default.
     }
     return (defaultJourneys && defaultJourneys.length > 0) ? defaultJourneys[0] : null;
   });
@@ -133,13 +130,30 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [journeys, plannerJourneys]);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [userHeading, setUserHeading] = useState<number | null>(0);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [visitedStopIds, setVisitedStopIds] = useLocalStorage<string[]>('trippin_visited_stops', []);
 
-  useLocationWatcher(useCallback((coords) => {
+  useLocationWatcher(useCallback((coords, heading) => {
     setUserLocation(coords);
+    if (heading !== null && !isNaN(heading)) {
+      setUserHeading(heading);
+    }
   }, []));
 
-  const value = { journeys, plannerJourneys, addJourney, persistJourney, cloneToPlanner, removeFromPlanner, activeJourney, setActiveJourney, loadJourney, userLocation, isFollowing, setIsFollowing };
+  const markStopAsVisited = useCallback((stopId: string) => {
+    setVisitedStopIds(prev => {
+      if (prev.includes(stopId)) return prev;
+      return [...prev, stopId];
+    });
+  }, [setVisitedStopIds]);
+
+  const value = {
+    journeys, plannerJourneys, addJourney, persistJourney, cloneToPlanner, removeFromPlanner,
+    activeJourney, setActiveJourney, loadJourney,
+    userLocation, userHeading, isFollowing, setIsFollowing,
+    visitedStopIds, markStopAsVisited
+  };
 
   return (
     <JourneyContext.Provider value={value}>
