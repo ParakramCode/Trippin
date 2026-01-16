@@ -126,6 +126,17 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
         }
     }, [userLocation, userHeading, ref]);
 
+    // Reset Camera when Navigation Ends
+    React.useEffect(() => {
+        if (!isFollowing && ref && 'current' in ref && ref.current) {
+            ref.current.easeTo({
+                pitch: 0,
+                bearing: 0,
+                duration: 1000
+            });
+        }
+    }, [isFollowing, ref]);
+
     // Active Navigation Loop
     useEffect(() => {
         if (!userLocation) return;
@@ -210,6 +221,8 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                     ref.current.flyTo({
                         center: stop.coordinates,
                         zoom: 14,
+                        pitch: 0,
+                        bearing: 0,
                         speed: 0.8,
                         curve: 1.5,
                         duration: 3000,

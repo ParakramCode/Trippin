@@ -6,10 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 const CATEGORIES = ["All", "Coastal", "City", "Mountain", "Forest", "Desert"];
 
 const Discover: React.FC = () => {
-  const { journeys, loadJourney, plannerJourneys } = useJourneys();
+  const { journeys, loadJourney, plannerJourneys, setIsFollowing } = useJourneys();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+
+  React.useEffect(() => {
+    setIsFollowing(false);
+  }, [setIsFollowing]);
 
   const handleJourneyClick = (journeyId: string) => {
     loadJourney(journeyId);
