@@ -16,6 +16,11 @@ const DestinationDetail: React.FC<DestinationDetailProps> = ({ stop, onClose }) 
         }
     };
 
+    // Get gallery images, fallback to imageUrl if gallery is empty
+    const galleryImages = stop.gallery && stop.gallery.length > 0
+        ? stop.gallery
+        : [stop.imageUrl];
+
     return (
         <>
             {/* Backdrop */}
@@ -37,18 +42,18 @@ const DestinationDetail: React.FC<DestinationDetailProps> = ({ stop, onClose }) 
                 dragConstraints={{ top: 0, bottom: 0 }}
                 dragElastic={0.2}
                 onDragEnd={handleDragEnd}
-                className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl max-w-2xl mx-auto"
+                className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl max-w-2xl mx-auto overflow-hidden"
                 style={{ height: '75vh' }}
             >
                 {/* Drag Handle */}
-                <div className="flex justify-center pt-3 pb-2">
+                <div className="flex justify-center pt-3 pb-2 bg-white relative z-10">
                     <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
                 </div>
 
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-6 right-6 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-10"
+                    className="absolute top-6 right-6 p-2 bg-white/90 backdrop-blur-md hover:bg-white rounded-full transition-colors z-20 shadow-lg"
                     aria-label="Close"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-slate-600">
@@ -57,63 +62,89 @@ const DestinationDetail: React.FC<DestinationDetailProps> = ({ stop, onClose }) 
                 </button>
 
                 {/* Scrollable Content */}
-                <div className="h-full overflow-y-auto pb-8 px-6">
-                    {/* Header */}
-                    <div className="mb-6">
-                        <h2 className="text-3xl font-serif font-bold text-slate-900 mb-2">{stop.name}</h2>
-                        <p className="text-sm text-slate-500 font-sans">Destination Details</p>
+                <div className="h-full overflow-y-auto">
+                    {/* Multi-Image Gallery with Overlay Content */}
+                    <div className="relative w-full h-64 mb-6">
+                        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide w-full h-full">
+                            {galleryImages.map((imageUrl, index) => (
+                                <div
+                                    key={index}
+                                    className="relative snap-center shrink-0 w-[85vw] h-full mr-4 last:mr-0"
+                                    style={{ maxWidth: '600px' }}
+                                >
+                                    <img
+                                        src={imageUrl}
+                                        alt={`${stop.name} ${index + 1}`}
+                                        className="w-full h-full object-cover rounded-2xl"
+                                    />
+
+                                    {/* Gradient Overlay */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent rounded-2xl" />
+
+                                    {/* Content Over First Image Only */}
+                                    {index === 0 && (
+                                        <div className="absolute bottom-0 left-0 right-0 p-6">
+                                            <h2 className="text-3xl font-serif font-bold text-white mb-3 drop-shadow-lg">
+                                                {stop.name}
+                                            </h2>
+
+                                            {/* Activity Chips */}
+                                            {stop.activities && stop.activities.length > 0 && (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {stop.activities.slice(0, 3).map((activity, actIndex) => (
+                                                        <span
+                                                            key={actIndex}
+                                                            className="bg-white/20 backdrop-blur-md text-white border border-white/30 px-3 py-1 rounded-full text-[10px] font-sans font-medium tracking-wide uppercase shadow-lg"
+                                                        >
+                                                            {activity}
+                                                        </span>
+                                                    ))}
+                                                    {stop.activities.length > 3 && (
+                                                        <span className="bg-white/20 backdrop-blur-md text-white border border-white/30 px-3 py-1 rounded-full text-[10px] font-sans font-medium tracking-wide uppercase shadow-lg">
+                                                            +{stop.activities.length - 3} more
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
-                    {/* Photo Gallery */}
-                    {stop.gallery && stop.gallery.length > 0 && (
-                        <div className="mb-6">
-                            <h3 className="text-sm font-sans font-bold text-slate-700 mb-3 uppercase tracking-wide">Gallery</h3>
-                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
-                                {stop.gallery.map((imageUrl, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex-shrink-0 w-64 h-40 rounded-2xl overflow-hidden shadow-md snap-center"
-                                    >
-                                        <img
-                                            src={imageUrl}
-                                            alt={`${stop.name} ${index + 1}`}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                ))}
+                    {/* Content Below Gallery */}
+                    <div className="px-6 pb-8">
+                        {/* All Activities (Expanded List) */}
+                        {stop.activities && stop.activities.length > 0 && (
+                            <div className="mb-6">
+                                <h3 className="text-sm font-sans font-bold text-slate-700 mb-3 uppercase tracking-wide">Things to Do</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {stop.activities.map((activity, index) => (
+                                        <span
+                                            key={index}
+                                            className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-[10px] font-sans font-medium tracking-wide uppercase"
+                                        >
+                                            {activity}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* Activities */}
-                    {stop.activities && stop.activities.length > 0 && (
-                        <div className="mb-6">
-                            <h3 className="text-sm font-sans font-bold text-slate-700 mb-3 uppercase tracking-wide">Things to Do</h3>
-                            <div className="flex flex-wrap gap-2">
-                                {stop.activities.map((activity, index) => (
-                                    <span
-                                        key={index}
-                                        className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-[10px] font-sans font-medium tracking-wide uppercase"
-                                    >
-                                        {activity}
-                                    </span>
-                                ))}
+                        {/* Story / Description */}
+                        {stop.description && (
+                            <div className="mb-6">
+                                <h3 className="text-sm font-sans font-bold text-slate-700 mb-3 uppercase tracking-wide">About this Place</h3>
+                                <p className="text-slate-600 font-serif text-base leading-relaxed">
+                                    {stop.description}
+                                </p>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* Story / Description */}
-                    {stop.description && (
-                        <div className="mb-6">
-                            <h3 className="text-sm font-sans font-bold text-slate-700 mb-3 uppercase tracking-wide">About this Place</h3>
-                            <p className="text-slate-600 font-serif text-base leading-relaxed">
-                                {stop.description}
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Spacer for bottom padding */}
-                    <div className="h-20" />
+                        {/* Spacer for bottom padding */}
+                        <div className="h-20" />
+                    </div>
                 </div>
             </motion.div>
         </>
