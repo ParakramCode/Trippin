@@ -101,6 +101,9 @@ const Discover: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {filteredJourneys.map((journey) => {
                 const isPlanned = plannerJourneys.some(p => p.clonedFrom === journey.id || p.id === journey.id);
+                const plannedJourney = plannerJourneys.find(p => p.clonedFrom === journey.id || p.id === journey.id);
+                const isCompleted = plannedJourney?.isCompleted === true;
+
                 // Mock data helpers
                 const stopsCount = journey.stops?.length || 0;
                 const distance = Math.floor(Math.random() * 50 + 10) + 'km';
@@ -129,13 +132,24 @@ const Discover: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90" />
                     <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent opacity-60" />
 
-                    {/* Planner Badge */}
+                    {/* Status Badge */}
                     {isPlanned && (
                       <div className="absolute top-4 right-4 z-10">
-                        <div className="bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm border border-white/50">
-                          <div className="w-1.5 h-1.5 rounded-full bg-brand-accent animate-pulse" />
-                          <span className="text-brand-dark text-[9px] font-bold tracking-wider uppercase">Planned</span>
-                        </div>
+                        {isCompleted ? (
+                          // Completed Badge - Solid background
+                          <div className="bg-emerald-500 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-white">
+                              <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-white text-[9px] font-bold tracking-wider uppercase">Completed</span>
+                          </div>
+                        ) : (
+                          // Planned Badge - Dotted style with pulse
+                          <div className="bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm border border-white/50">
+                            <div className="w-1.5 h-1.5 rounded-full bg-brand-accent animate-pulse" />
+                            <span className="text-brand-dark text-[9px] font-bold tracking-wider uppercase">Planned</span>
+                          </div>
+                        )}
                       </div>
                     )}
 
