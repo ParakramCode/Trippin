@@ -169,34 +169,41 @@ const MyTrips: React.FC = () => {
 
                         {/* Top Controls */}
                         <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-30 pointer-events-none">
-                          {/* Live/Start Journey Pill */}
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={(e) => handleStartNavigation(e, journey)}
-                            className="pointer-events-auto flex items-center gap-2 pl-3 pr-4 py-2 bg-white/40 backdrop-blur-md border border-white/20 rounded-full text-slate-700 font-sans font-medium text-xs shadow-lg hover:bg-white/50 transition-all filter drop-shadow-sm"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-slate-700">
-                              <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                            </svg>
-                            <span>{isActive ? 'Live Journey' : 'Start Journey'}</span>
-                          </motion.button>
+                          {/* Live/Start Journey Pill - Only show for non-completed journeys */}
+                          {!journey.isCompleted && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={(e) => handleStartNavigation(e, journey)}
+                              className="pointer-events-auto flex items-center gap-2 pl-3 pr-4 py-2 bg-white/40 backdrop-blur-md border border-white/20 rounded-full text-slate-700 font-sans font-medium text-xs shadow-lg hover:bg-white/50 transition-all filter drop-shadow-sm"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-slate-700">
+                                <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                              </svg>
+                              <span>{isActive ? 'Live Journey' : 'Start Journey'}</span>
+                            </motion.button>
+                          )}
+
+                          {/* Spacer for completed journeys to push buttons to right */}
+                          {journey.isCompleted && <div />}
 
                           {/* Action Buttons */}
                           <div className="flex gap-2">
-                            {/* Edit Details Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/planner/${journey.id}`);
-                              }}
-                              className="pointer-events-auto p-2 bg-white/40 backdrop-blur-md rounded-full text-slate-400 hover:text-indigo-500 hover:bg-white/60 transition-all border border-white/20"
-                              title="Edit Details"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                              </svg>
-                            </button>
+                            {/* Edit Details Button - Only show for non-completed journeys */}
+                            {!journey.isCompleted && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/planner/${journey.id}`);
+                                }}
+                                className="pointer-events-auto p-2 bg-white/40 backdrop-blur-md rounded-full text-slate-400 hover:text-indigo-500 hover:bg-white/60 transition-all border border-white/20"
+                                title="Edit Details"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                </svg>
+                              </button>
+                            )}
 
                             {/* Remove Button */}
                             <button
