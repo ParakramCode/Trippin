@@ -9,6 +9,10 @@ interface JourneyContextType {
   persistJourney: (journey: Journey) => void;
   cloneToPlanner: (journey: Journey) => void;
   removeFromPlanner: (journeyId: string) => void;
+  renameJourney: (journeyId: string, newTitle: string) => void;
+  moveStop: (journeyId: string, stopIndex: number, direction: 'up' | 'down') => void;
+  removeStop: (journeyId: string, stopId: string) => void;
+  updateStopNote: (journeyId: string, stopId: string, note: string) => void;
   activeJourney: Journey | null;
   setActiveJourney: (journey: Journey) => void;
   loadJourney: (journeyId: string) => void;
@@ -250,6 +254,84 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   }, [setVisitedStopIds]);
 
+  // Rename a journey in the planner
+  const renameJourney = useCallback((journeyId: string, newTitle: string) => {
+    setPlannerJourneys(prev => prev.map(j =>
+      j.id === journeyId ? { ...j, title: newTitle } : j
+    ));
+    // Update active journey if it's the one being renamed
+    if (activeJourney?.id === journeyId) {
+      setActiveJourney({ ...activeJourney, title: newTitle });
+    }
+  }, [setPlannerJourneys, activeJourney]);
+
+  // Move a stop up or down in a journey
+  const moveStop = useCallback((journeyId: string, stopIndex: number, direction: 'up' | 'down') => {
+    setPlannerJourneys(prev => prev.map(journey => {
+      if (journey.id !== journeyId || !journey.stops) return journey;
+
+      const newStops = [...journey.stops];
+      const newIndex = direction === 'up' ? stopIndex - 1 : stopIndex + 1;
+
+      // Check bounds
+      if (newIndex < 0 || newIndex >= newStops.length) return journey;
+
+      // Swap stops
+      [newStops[stopIndex], newStops[newIndex]] = [newStops[newIndex], newStops[stopIndex]];
+
+      return { ...journey, stops: newStops };
+    }));
+
+    // Update active journey if it's the one being modified
+    if (activeJourney?.id === journeyId && activeJourney.stops) {
+      const newStops = [...activeJourney.stops];
+      const newIndex = direction === 'up' ? stopIndex - 1 : stopIndex + 1;
+      if (newIndex >= 0 && newIndex < newStops.length) {
+        [newStops[stopIndex], newStops[newIndex]] = [newStops[newIndex], newStops[stopIndex]];
+        setActiveJourney({ ...activeJourney, stops: newStops });
+      }
+    }
+  }, [setPlannerJourneys, activeJourney]);
+
+  // Remove a specific stop from a journey
+  const removeStop = useCallback((journeyId: string, stopId: string) => {
+    setPlannerJourneys(prev => prev.map(journey => {
+      if (journey.id !== journeyId || !journey.stops) return journey;
+      return { ...journey, stops: journey.stops.filter(s => s.id !== stopId) };
+    }));
+
+    // Update active journey if it's the one being modified
+    if (activeJourney?.id === journeyId && activeJourney.stops) {
+      setActiveJourney({
+        ...activeJourney,
+        stops: activeJourney.stops.filter(s => s.id !== stopId)
+      });
+    }
+  }, [setPlannerJourneys, activeJourney]);
+
+  // Update a note on a specific stop
+  const updateStopNote = useCallback((journeyId: string, stopId: string, note: string) => {
+    setPlannerJourneys(prev => prev.map(journey => {
+      if (journey.id !== journeyId || !journey.stops) return journey;
+      return {
+        ...journey,
+        stops: journey.stops.map(stop =>
+          stop.id === stopId ? { ...stop, note } : stop
+        )
+      };
+    }));
+
+    // Update active journey if it's the one being modified
+    if (activeJourney?.id === journeyId && activeJourney.stops) {
+      setActiveJourney({
+        ...activeJourney,
+        stops: activeJourney.stops.map(stop =>
+          stop.id === stopId ? { ...stop, note } : stop
+        )
+      });
+    }
+  }, [setPlannerJourneys, activeJourney]);
+
   // Memoized set of saved journey IDs for instant lookup
   const savedJourneyIds = useMemo(() => {
     return new Set(plannerJourneys.map(j => j.clonedFrom || j.id));
@@ -262,6 +344,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const value = {
     journeys, plannerJourneys, addJourney, persistJourney, cloneToPlanner, removeFromPlanner,
+    renameJourney, moveStop, removeStop, updateStopNote,
     activeJourney, setActiveJourney, loadJourney,
     userLocation, userHeading, isFollowing, setIsFollowing,
     visitedStopIds, markStopAsVisited,

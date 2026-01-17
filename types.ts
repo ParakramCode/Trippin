@@ -33,4 +33,5 @@ export interface Stop {
   images?: string[]; // Array of images for the gallery/postcard view
   description?: string;
   author?: Author;
+  note?: string; // User-added note for this stop
 }
