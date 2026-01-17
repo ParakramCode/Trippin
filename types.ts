@@ -36,4 +36,6 @@ export interface Stop {
   description?: string;
   author?: Author;
   note?: string; // User-added note for this stop
+  gallery?: string[]; // Additional gallery images for destination overlay
+  activities?: string[]; // List of activities available at this stop
 }

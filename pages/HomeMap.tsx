@@ -3,6 +3,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { MapRef } from 'react-map-gl/mapbox';
 import JourneyMap from '../components/JourneyMap';
 import Filmstrip from '../components/Filmstrip';
+import DestinationDetail from '../components/DestinationDetail';
 import { Stop } from '../types';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import mapboxgl from 'mapbox-gl'; // Import mapboxgl for fitBounds
@@ -17,6 +18,7 @@ const HomeMap: React.FC = () => {
     const mapRef = useRef<MapRef>(null);
     const { activeJourney, cloneToPlanner, isFollowing, savedJourneyIds } = useJourneys();
     const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+    const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const navigate = useNavigate();
 
@@ -44,6 +46,8 @@ const HomeMap: React.FC = () => {
 
     const handleStopSelect = (stop: Stop) => {
         setSelectedStopId(stop.id);
+        // Open destination detail overlay
+        setSelectedStop(stop);
     };
 
     // Redirect if no active journey
@@ -134,6 +138,16 @@ const HomeMap: React.FC = () => {
                             />
                         </div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Destination Detail Overlay */}
+            <AnimatePresence>
+                {selectedStop && (
+                    <DestinationDetail
+                        stop={selectedStop}
+                        onClose={() => setSelectedStop(null)}
+                    />
                 )}
             </AnimatePresence>
         </div>

@@ -72,8 +72,9 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }
                             style={{ flex: '0 0 100%' }} // Force 100% width
                         >
                             <div
+                                onClick={() => onSelect(stop)}
                                 className={`
-                                    w-full max-w-sm h-full bg-white/70 backdrop-blur-xl border border-white/40 rounded-[32px] shadow-xl shadow-black/5 overflow-hidden flex flex-row transition-all duration-500 ease-boutique
+                                    w-full max-w-sm h-full bg-white/70 backdrop-blur-xl border border-white/40 rounded-[32px] shadow-xl shadow-black/5 overflow-hidden flex flex-row transition-all duration-500 ease-boutique cursor-pointer
                                     ${selectedStopId === stop.id ? 'ring-2 ring-brand-accent/50 scale-[1.02]' : 'hover:scale-[1.01]'}
                                 `}
                             >

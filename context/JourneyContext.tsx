@@ -101,9 +101,45 @@ export const defaultJourneys: Journey[] = [
       bio: 'Himalayan trekker.'
     },
     stops: [
-      { id: '7', name: 'Kaza', coordinates: [78.0710, 32.2276], imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop', description: 'Remote capital of Spiti situated on the banks of Spiti River.' },
-      { id: '8', name: 'Key Monastery', coordinates: [78.0120, 32.2960], imageUrl: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&q=80&auto=format&fit=crop', description: 'Famous Tibetan Buddhist monastery perched on a hill.' },
-      { id: '9', name: 'Chandratal Lake', coordinates: [77.6100, 32.4800], imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=800&q=80&auto=format&fit=crop', description: 'Crescent-shaped lake offering mesmerizing reflections.' }
+      {
+        id: '7',
+        name: 'Kaza',
+        coordinates: [78.0710, 32.2276],
+        imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
+        description: 'Remote capital of Spiti situated on the banks of Spiti River. This high-altitude desert town serves as the perfect base for exploring ancient monasteries and experiencing the unique culture of the trans-Himalayan region.',
+        gallery: [
+          'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop'
+        ],
+        activities: ['Key Monastery Visit', 'High Altitude Post Office', 'Local Market Shopping', 'Stargazing', 'Traditional Spitian Cuisine']
+      },
+      {
+        id: '8',
+        name: 'Key Monastery',
+        coordinates: [78.0120, 32.2960],
+        imageUrl: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&q=80&auto=format&fit=crop',
+        description: 'Famous Tibetan Buddhist monastery perched on a hill at 4,166 meters. Founded in the 11th century, it houses rare Buddhist scriptures and stunning murals.',
+        gallery: [
+          'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800&q=80&auto=format&fit=crop'
+        ],
+        activities: ['Prayer Hall Tour', 'Monk Interactions', 'Butter Lamp Lighting', 'Meditation Session', 'Manuscript Viewing']
+      },
+      {
+        id: '9',
+        name: 'Chandratal Lake',
+        coordinates: [77.6100, 32.4800],
+        imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=800&q=80&auto=format&fit=crop',
+        description: 'Crescent-shaped lake offering mesmerizing reflections of the surrounding peaks. Sacred to locals and a favorite camping destination for adventurers.',
+        gallery: [
+          'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800&q=80&auto=format&fit=crop'
+        ],
+        activities: ['Lakeside Camping', 'Photography', 'Sunrise Viewing', 'Nature Walks', 'Bird Watching']
+      }
     ],
     moments: []
   },
@@ -119,9 +155,45 @@ export const defaultJourneys: Journey[] = [
       bio: 'Himalayan trekker.'
     },
     stops: [
-      { id: '10', name: 'Hadimba Temple', coordinates: [77.1887, 32.2450], imageUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=800&q=80&auto=format&fit=crop', description: 'Ancient cave temple dedicated to Hidimbi Devi.' },
-      { id: '11', name: 'Jogini Falls', coordinates: [77.1950, 32.2600], imageUrl: 'https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=800&q=80&auto=format&fit=crop', description: 'Scenic path leading to a majestic waterfall.' },
-      { id: '12', name: 'Beas River', coordinates: [77.1800, 32.2300], imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop', description: 'Riverside relaxation with stunning mountain backdrops.' }
+      {
+        id: '10',
+        name: 'Hadimba Temple',
+        coordinates: [77.1887, 32.2450],
+        imageUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=800&q=80&auto=format&fit=crop',
+        description: 'Ancient cave temple dedicated to Hidimbi Devi, surrounded by towering cedar forests. Built in 1553, it showcases unique Himalayan architecture.',
+        gallery: [
+          'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1511593358241-7eea1f3c84e5?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&q=80&auto=format&fit=crop'
+        ],
+        activities: ['Temple Visit', 'Cedar Forest Walk', 'Photography', 'Cultural Exploration', 'Local Handicrafts']
+      },
+      {
+        id: '11',
+        name: 'Jogini Falls',
+        coordinates: [77.1950, 32.2600],
+        imageUrl: 'https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=800&q=80&auto=format&fit=crop',
+        description: 'Scenic path leading to a majestic waterfall cascading down from 150 feet. The trek offers panoramic views of Manali valley.',
+        gallery: [
+          'https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1511593358241-7eea1f3c84e5?w=800&q=80&auto=format&fit=crop'
+        ],
+        activities: ['Waterfall Trek', 'Vashisht Temple Visit', 'Hot Springs', 'Valley Photography', 'Picnic Spot']
+      },
+      {
+        id: '12',
+        name: 'Beas River',
+        coordinates: [77.1800, 32.2300],
+        imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
+        description: 'Riverside relaxation with stunning mountain backdrops. Perfect spot for rafting, fishing, or simply enjoying the serene mountain atmosphere.',
+        gallery: [
+          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=800&q=80&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1511593358241-7eea1f3c84e5?w=800&q=80&auto=format&fit=crop'
+        ],
+        activities: ['River Rafting', 'Fishing', 'Riverside Camping', 'Photography', 'Mountain Biking']
+      }
     ],
     moments: []
   },
