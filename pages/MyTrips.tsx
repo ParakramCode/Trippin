@@ -15,7 +15,7 @@ const MyTrips: React.FC = () => {
 
     // 1. Filter
     const filtered = plannerJourneys.filter(j => {
-      const isCompleted = j.stops && j.stops.length > 0 && j.stops.every(s => visitedStopIds.includes(s.id));
+      const isCompleted = j.isCompleted === true;
       const isActive = activeJourney?.id === j.id;
 
       if (filter === 'completed') {
@@ -25,13 +25,30 @@ const MyTrips: React.FC = () => {
       }
     });
 
-    // 2. Sort (Active first)
+    // 2. Sort
     return filtered.sort((a, b) => {
+      // Active first in Planned tab
       if (activeJourney && a.id === activeJourney.id) return -1;
       if (activeJourney && b.id === activeJourney.id) return 1;
+
+      // For completed tab, sort by completion date (most recent first)
+      if (filter === 'completed' && a.completedAt && b.completedAt) {
+        return new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime();
+      }
+
       return 0;
     });
   }, [plannerJourneys, activeJourney, filter, visitedStopIds]);
+
+  // Helper function to format completion date
+  const formatCompletionDate = (isoDate: string) => {
+    const date = new Date(isoDate);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
 
   const handleJourneyClick = (journey: Journey) => {
     setActiveJourney(journey);
@@ -199,8 +216,15 @@ const MyTrips: React.FC = () => {
                           <h3 className="font-serif text-2xl font-bold mb-1 truncate drop-shadow-md">{journey.title}</h3>
                           <p className="font-sans text-xs font-medium tracking-wide uppercase opacity-80">{journey.location}</p>
 
+                          {/* Completion Date - Only show for completed journeys */}
+                          {journey.isCompleted && journey.completedAt && (
+                            <p className="font-sans text-xs text-slate-300 mt-1">
+                              Finished {formatCompletionDate(journey.completedAt)}
+                            </p>
+                          )}
+
                           {/* Progress Indicator */}
-                          {visitedCount > 0 && (
+                          {visitedCount > 0 && !journey.isCompleted && (
                             <div className="mt-4">
                               <div className="flex justify-between items-center mb-1.5">
                                 <span className="text-[10px] font-bold text-white/90 uppercase tracking-widest">{visitedCount} of {totalStops} Stops</span>

@@ -12,7 +12,7 @@ interface NavigationDrawerProps {
 }
 
 const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStopId, onSelect }) => {
-    const { userLocation, setIsFollowing, visitedStopIds, toggleStopVisited, activeJourney } = useJourneys();
+    const { userLocation, setIsFollowing, visitedStopIds, toggleStopVisited, activeJourney, completeJourney } = useJourneys();
     const [isOpen, setIsOpen] = useState(true);
     const [showCompletionModal, setShowCompletionModal] = useState(false);
     const [lastToggleTime, setLastToggleTime] = useState(0);
@@ -63,11 +63,12 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
     };
 
     const handleMarkComplete = () => {
-        // Mark journey as completed - this would trigger moving to Completed tab
+        // Mark journey as completed with timestamp
+        if (activeJourney) {
+            completeJourney(activeJourney.id);
+        }
         setShowCompletionModal(false);
         setIsFollowing(false);
-        // Journey will automatically move to completed tab on MyTrips page
-        // because it checks if all stops are visited
     };
 
     return (

@@ -32,7 +32,7 @@ const Planner: React.FC = () => {
     );
   }
 
-  const isEditable = true; // All journeys in plannerJourneys are editable
+  const isEditable = !journey.isCompleted; // Only editable if not completed
 
   const handleTitleSave = () => {
     if (editedTitle.trim() && editedTitle !== journey.title) {
@@ -232,39 +232,47 @@ const Planner: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Note Section - Only show if editable */}
-                  {isEditable && (
-                    <div className="mt-4 pt-4 border-t border-slate-100">
-                      {expandedNoteId === stop.id || stop.note ? (
-                        <div>
-                          <label className="block text-xs font-sans font-medium text-slate-500 mb-1.5">
-                            Personal Note
-                          </label>
-                          <textarea
-                            value={editingNotes[stop.id] ?? stop.note ?? ''}
-                            onChange={(e) => handleNoteChange(stop.id, e.target.value)}
-                            placeholder="Add a personal note for this stop..."
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans text-slate-600 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                            rows={3}
-                          />
-                          <div className="flex justify-end gap-2 mt-2">
-                            {expandedNoteId === stop.id && !stop.note && (
+                  {/* Note Section - Editable if not completed, read-only if completed */}
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    {stop.note ? (
+                      <div>
+                        <label className="block text-xs font-sans font-medium text-slate-500 mb-1.5">
+                          Personal Note
+                        </label>
+                        {isEditable ? (
+                          <>
+                            <textarea
+                              value={editingNotes[stop.id] ?? stop.note ?? ''}
+                              onChange={(e) => handleNoteChange(stop.id, e.target.value)}
+                              placeholder="Add a personal note for this stop..."
+                              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans text-slate-600 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                              rows={3}
+                            />
+                            <div className="flex justify-end gap-2 mt-2">
+                              {expandedNoteId === stop.id && !stop.note && (
+                                <button
+                                  onClick={() => handleNoteCancel(stop.id)}
+                                  className="px-3 py-1.5 text-xs font-sans text-slate-500 hover:text-slate-700 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              )}
                               <button
-                                onClick={() => handleNoteCancel(stop.id)}
-                                className="px-3 py-1.5 text-xs font-sans text-slate-500 hover:text-slate-700 transition-colors"
+                                onClick={() => handleNoteSave(stop.id)}
+                                className="px-4 py-1.5 bg-slate-600 text-white text-xs font-sans font-medium rounded-md hover:bg-slate-700 transition-colors shadow-sm"
                               >
-                                Cancel
+                                Save
                               </button>
-                            )}
-                            <button
-                              onClick={() => handleNoteSave(stop.id)}
-                              className="px-4 py-1.5 bg-slate-600 text-white text-xs font-sans font-medium rounded-md hover:bg-slate-700 transition-colors shadow-sm"
-                            >
-                              Save
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
+                            </div>
+                          </>
+                        ) : (
+                          <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans text-slate-600">
+                            {stop.note}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      isEditable && (
                         <button
                           onClick={() => handleNoteExpand(stop.id, stop.note)}
                           className="text-xs font-sans text-indigo-500 hover:text-indigo-600 font-medium flex items-center gap-1"
@@ -274,9 +282,9 @@ const Planner: React.FC = () => {
                           </svg>
                           Add Note
                         </button>
-                      )}
-                    </div>
-                  )}
+                      )
+                    )}
+                  </div>
                 </div>
               </motion.div>
             ))

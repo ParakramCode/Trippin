@@ -23,6 +23,8 @@ interface JourneyContextType {
   visitedStopIds: string[];
   markStopAsVisited: (stopId: string) => void;
   toggleStopVisited: (stopId: string) => void;
+  completeJourney: (journeyId: string) => void;
+  isJourneyEditable: (journeyId: string) => boolean;
   savedJourneyIds: Set<string>;
   isAlreadySaved: (journeyId: string) => boolean;
 }
@@ -265,6 +267,26 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   }, [setVisitedStopIds]);
 
+  // Complete a journey with timestamp
+  const completeJourney = useCallback((journeyId: string) => {
+    const now = new Date().toISOString();
+    setPlannerJourneys(prev => prev.map(j =>
+      j.id === journeyId
+        ? { ...j, isCompleted: true, completedAt: now }
+        : j
+    ));
+    // Update active journey if it's the one being completed
+    if (activeJourney?.id === journeyId) {
+      setActiveJourney({ ...activeJourney, isCompleted: true, completedAt: now });
+    }
+  }, [setPlannerJourneys, activeJourney]);
+
+  // Check if a journey is editable (must be in planner and not completed)
+  const isJourneyEditable = useCallback((journeyId: string) => {
+    const journey = plannerJourneys.find(j => j.id === journeyId);
+    return journey ? !journey.isCompleted : false;
+  }, [plannerJourneys]);
+
   // Rename a journey in the planner
   const renameJourney = useCallback((journeyId: string, newTitle: string) => {
     setPlannerJourneys(prev => prev.map(j =>
@@ -359,6 +381,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     activeJourney, setActiveJourney, loadJourney,
     userLocation, userHeading, isFollowing, setIsFollowing,
     visitedStopIds, markStopAsVisited, toggleStopVisited,
+    completeJourney, isJourneyEditable,
     savedJourneyIds, isAlreadySaved
   };
 
