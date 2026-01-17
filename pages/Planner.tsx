@@ -13,6 +13,7 @@ const Planner: React.FC = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(journey?.title || '');
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
 
   if (!journey) {
     return (
@@ -45,8 +46,32 @@ const Planner: React.FC = () => {
     setIsEditingTitle(false);
   };
 
-  const handleNoteUpdate = (stopId: string, note: string) => {
+  const handleNoteChange = (stopId: string, note: string) => {
+    setEditingNotes(prev => ({ ...prev, [stopId]: note }));
+  };
+
+  const handleNoteSave = (stopId: string) => {
+    const note = editingNotes[stopId] || '';
     updateStopNote(journey.id, stopId, note);
+    setEditingNotes(prev => {
+      const newNotes = { ...prev };
+      delete newNotes[stopId];
+      return newNotes;
+    });
+  };
+
+  const handleNoteExpand = (stopId: string, currentNote?: string) => {
+    setExpandedNoteId(stopId);
+    setEditingNotes(prev => ({ ...prev, [stopId]: currentNote || '' }));
+  };
+
+  const handleNoteCancel = (stopId: string) => {
+    setExpandedNoteId(null);
+    setEditingNotes(prev => {
+      const newNotes = { ...prev };
+      delete newNotes[stopId];
+      return newNotes;
+    });
   };
 
   const handleRemoveStop = (stopId: string) => {
@@ -216,24 +241,32 @@ const Planner: React.FC = () => {
                             Personal Note
                           </label>
                           <textarea
-                            value={stop.note || ''}
-                            onChange={(e) => handleNoteUpdate(stop.id, e.target.value)}
+                            value={editingNotes[stop.id] ?? stop.note ?? ''}
+                            onChange={(e) => handleNoteChange(stop.id, e.target.value)}
                             placeholder="Add a personal note for this stop..."
                             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans text-slate-600 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                             rows={3}
                           />
-                          {expandedNoteId === stop.id && !stop.note && (
+                          <div className="flex justify-end gap-2 mt-2">
+                            {expandedNoteId === stop.id && !stop.note && (
+                              <button
+                                onClick={() => handleNoteCancel(stop.id)}
+                                className="px-3 py-1.5 text-xs font-sans text-slate-500 hover:text-slate-700 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            )}
                             <button
-                              onClick={() => setExpandedNoteId(null)}
-                              className="mt-2 text-xs text-slate-500 hover:text-slate-700"
+                              onClick={() => handleNoteSave(stop.id)}
+                              className="px-4 py-1.5 bg-slate-600 text-white text-xs font-sans font-medium rounded-md hover:bg-slate-700 transition-colors shadow-sm"
                             >
-                              Cancel
+                              Save
                             </button>
-                          )}
+                          </div>
                         </div>
                       ) : (
                         <button
-                          onClick={() => setExpandedNoteId(stop.id)}
+                          onClick={() => handleNoteExpand(stop.id, stop.note)}
                           className="text-xs font-sans text-indigo-500 hover:text-indigo-600 font-medium flex items-center gap-1"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">

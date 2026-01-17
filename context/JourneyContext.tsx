@@ -22,6 +22,7 @@ interface JourneyContextType {
   setIsFollowing: (v: boolean) => void;
   visitedStopIds: string[];
   markStopAsVisited: (stopId: string) => void;
+  toggleStopVisited: (stopId: string) => void;
   savedJourneyIds: Set<string>;
   isAlreadySaved: (journeyId: string) => boolean;
 }
@@ -91,16 +92,16 @@ export const defaultJourneys: Journey[] = [
     title: 'Spiti Valley Circuit',
     location: 'Himachal Pradesh, India',
     duration: '5 Days',
-    imageUrl: 'https://images.unsplash.com/photo-1593181829283-a4c3f5966601?q=80&w=800&auto=format&fit=crop',
+    imageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800&q=80&auto=format&fit=crop',
     author: {
       name: 'Arjun Mehta',
       avatar: 'https://i.pravatar.cc/150?u=arjun',
       bio: 'Himalayan trekker.'
     },
     stops: [
-      { id: '7', name: 'Kaza', coordinates: [78.0710, 32.2276], imageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=300', description: 'Remote capital of Spiti situated on the banks of Spiti River.' },
-      { id: '8', name: 'Key Monastery', coordinates: [78.0120, 32.2960], imageUrl: 'https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=300', description: 'Famous Tibetan Buddhist monastery perched on a hill.' },
-      { id: '9', name: 'Chandratal Lake', coordinates: [77.6100, 32.4800], imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=300', description: 'Crescent-shaped lake offering mesmerizing reflections.' }
+      { id: '7', name: 'Kaza', coordinates: [78.0710, 32.2276], imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop', description: 'Remote capital of Spiti situated on the banks of Spiti River.' },
+      { id: '8', name: 'Key Monastery', coordinates: [78.0120, 32.2960], imageUrl: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&q=80&auto=format&fit=crop', description: 'Famous Tibetan Buddhist monastery perched on a hill.' },
+      { id: '9', name: 'Chandratal Lake', coordinates: [77.6100, 32.4800], imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=800&q=80&auto=format&fit=crop', description: 'Crescent-shaped lake offering mesmerizing reflections.' }
     ],
     moments: []
   },
@@ -109,16 +110,16 @@ export const defaultJourneys: Journey[] = [
     title: 'Old Manali Trail',
     location: 'Himachal Pradesh, India',
     duration: '3 Days',
-    imageUrl: 'https://images.unsplash.com/photo-1589136777351-9432851982b6?q=80&w=800&auto=format&fit=crop',
+    imageUrl: 'https://images.unsplash.com/photo-1511593358241-7eea1f3c84e5?w=800&q=80&auto=format&fit=crop',
     author: {
       name: 'Arjun Mehta',
       avatar: 'https://i.pravatar.cc/150?u=arjun',
       bio: 'Himalayan trekker.'
     },
     stops: [
-      { id: '10', name: 'Hadimba Temple', coordinates: [77.1887, 32.2450], imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=300', description: 'Ancient cave temple dedicated to Hidimbi Devi.' },
-      { id: '11', name: 'Jogini Falls', coordinates: [77.1950, 32.2600], imageUrl: 'https://images.unsplash.com/photo-1589136777351-9432851982b6?w=300', description: 'Scenic path leading to a majestic waterfall.' },
-      { id: '12', name: 'Beas River', coordinates: [77.1800, 32.2300], imageUrl: 'https://images.unsplash.com/photo-1593181829283-a4c3f5966601?w=300', description: 'Riverside relaxation with stunning mountain backdrops.' }
+      { id: '10', name: 'Hadimba Temple', coordinates: [77.1887, 32.2450], imageUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=800&q=80&auto=format&fit=crop', description: 'Ancient cave temple dedicated to Hidimbi Devi.' },
+      { id: '11', name: 'Jogini Falls', coordinates: [77.1950, 32.2600], imageUrl: 'https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=800&q=80&auto=format&fit=crop', description: 'Scenic path leading to a majestic waterfall.' },
+      { id: '12', name: 'Beas River', coordinates: [77.1800, 32.2300], imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop', description: 'Riverside relaxation with stunning mountain backdrops.' }
     ],
     moments: []
   },
@@ -254,6 +255,16 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   }, [setVisitedStopIds]);
 
+  const toggleStopVisited = useCallback((stopId: string) => {
+    setVisitedStopIds(prev => {
+      if (prev.includes(stopId)) {
+        return prev.filter(id => id !== stopId);
+      } else {
+        return [...prev, stopId];
+      }
+    });
+  }, [setVisitedStopIds]);
+
   // Rename a journey in the planner
   const renameJourney = useCallback((journeyId: string, newTitle: string) => {
     setPlannerJourneys(prev => prev.map(j =>
@@ -347,7 +358,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     renameJourney, moveStop, removeStop, updateStopNote,
     activeJourney, setActiveJourney, loadJourney,
     userLocation, userHeading, isFollowing, setIsFollowing,
-    visitedStopIds, markStopAsVisited,
+    visitedStopIds, markStopAsVisited, toggleStopVisited,
     savedJourneyIds, isAlreadySaved
   };
 

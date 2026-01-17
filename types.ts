@@ -15,6 +15,8 @@ export interface Journey {
   moments?: Moment[];
   clonedAt?: number;
   clonedFrom?: string;
+  completedAt?: string; // ISO timestamp
+  isCompleted?: boolean;
 }
 
 export interface Moment {
