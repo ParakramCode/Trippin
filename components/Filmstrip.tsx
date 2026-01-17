@@ -5,18 +5,23 @@ import { Stop } from '../types';
 interface FilmstripProps {
     stops: Stop[];
     selectedStopId: string | null;
-    onSelect: (stop: Stop) => void;
+    onSelect: (stop: Stop) => void; // Camera focus during scroll
+    onCardClick?: (stop: Stop) => void; // Explicit click for detail overlay
 }
 
-const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }) => {
+const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect, onCardClick }) => {
     const containerRef = React.useRef<HTMLDivElement>(null);
     const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const isScrollingRef = React.useRef<boolean>(false);
 
     const handleScroll = React.useCallback(() => {
         if (containerRef.current) {
             const container = containerRef.current;
             const scrollLeft = container.scrollLeft;
             const width = container.clientWidth;
+
+            // Mark as scrolling to prevent auto-opening detail
+            isScrollingRef.current = true;
 
             // Debounce the selection update to prevent jumping while swiping
             if (scrollTimeoutRef.current) {
@@ -28,9 +33,13 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }
                 if (index >= 0 && index < stops.length) {
                     const stop = stops[index];
                     if (stop && stop.id !== selectedStopId) {
-                        onSelect(stop);
+                        onSelect(stop); // Only updates camera, NOT detail overlay
                     }
                 }
+                // Clear scrolling flag after debounce
+                setTimeout(() => {
+                    isScrollingRef.current = false;
+                }, 200);
             }, 100); // 100ms debounce
         }
     }, [stops, selectedStopId, onSelect]);
@@ -44,6 +53,16 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }
             }
         }
     }, [selectedStopId]);
+
+    const handleCardClick = (stop: Stop, e: React.MouseEvent) => {
+        // Prevent event bubbling to map
+        e.stopPropagation();
+
+        // Only trigger detail overlay if not currently scrolling
+        if (!isScrollingRef.current && onCardClick) {
+            onCardClick(stop);
+        }
+    };
 
     return (
         <div className="fixed bottom-24 left-0 right-0 z-40 h-36 pointer-events-none flex items-center justify-center">
@@ -72,7 +91,7 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect }
                             style={{ flex: '0 0 100%' }} // Force 100% width
                         >
                             <div
-                                onClick={() => onSelect(stop)}
+                                onClick={(e) => handleCardClick(stop, e)}
                                 className={`
                                     w-full max-w-sm h-full bg-white/70 backdrop-blur-xl border border-white/40 rounded-[32px] shadow-xl shadow-black/5 overflow-hidden flex flex-row transition-all duration-500 ease-boutique cursor-pointer
                                     ${selectedStopId === stop.id ? 'ring-2 ring-brand-accent/50 scale-[1.02]' : 'hover:scale-[1.01]'}

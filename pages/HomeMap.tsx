@@ -44,10 +44,16 @@ const HomeMap: React.FC = () => {
         setTimeout(() => setToastMessage(null), 2000);
     };
 
-    const handleStopSelect = (stop: Stop) => {
+    // Handler for scroll/swipe - updates camera focus ONLY
+    const handleStopFocus = (stop: Stop) => {
         setSelectedStopId(stop.id);
-        // Open destination detail overlay
+        // Camera updates, but detail overlay does NOT open
+    };
+
+    // Handler for explicit card click - opens detail overlay ONLY
+    const handleStopClick = (stop: Stop) => {
         setSelectedStop(stop);
+        // Detail overlay opens, camera position unchanged
     };
 
     // Redirect if no active journey
@@ -70,7 +76,7 @@ const HomeMap: React.FC = () => {
                 moments={activeJourney.moments}
                 mapboxToken={VITE_MAPBOX_TOKEN}
                 selectedStopId={selectedStopId}
-                onStopSelect={handleStopSelect}
+                onStopSelect={handleStopFocus}
             />
 
             {/* Top Right Controls: Author & Add Button */}
@@ -119,7 +125,7 @@ const HomeMap: React.FC = () => {
                         key="nav-drawer"
                         stops={activeJourney.stops}
                         selectedStopId={selectedStopId}
-                        onSelect={handleStopSelect}
+                        onSelect={handleStopFocus}
                     />
                 ) : (
                     <motion.div
@@ -134,14 +140,15 @@ const HomeMap: React.FC = () => {
                             <Filmstrip
                                 stops={activeJourney.stops}
                                 selectedStopId={selectedStopId}
-                                onSelect={handleStopSelect}
+                                onSelect={handleStopFocus}
+                                onCardClick={handleStopClick}
                             />
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Destination Detail Overlay */}
+            {/* Destination Detail Overlay - Only opens on explicit card click */}
             <AnimatePresence>
                 {selectedStop && (
                     <DestinationDetail
