@@ -168,8 +168,8 @@ const Planner: React.FC = () => {
                           onClick={() => moveStop(journey.id, index, 'up')}
                           disabled={index === 0}
                           className={`p-1.5 rounded-lg transition-colors ${index === 0
-                              ? 'text-slate-300 cursor-not-allowed'
-                              : 'text-slate-500 hover:text-indigo-500 hover:bg-indigo-50'
+                            ? 'text-slate-300 cursor-not-allowed'
+                            : 'text-slate-500 hover:text-indigo-500 hover:bg-indigo-50'
                             }`}
                           title="Move up"
                         >
@@ -183,8 +183,8 @@ const Planner: React.FC = () => {
                           onClick={() => moveStop(journey.id, index, 'down')}
                           disabled={index === journey.stops!.length - 1}
                           className={`p-1.5 rounded-lg transition-colors ${index === journey.stops!.length - 1
-                              ? 'text-slate-300 cursor-not-allowed'
-                              : 'text-slate-500 hover:text-indigo-500 hover:bg-indigo-50'
+                            ? 'text-slate-300 cursor-not-allowed'
+                            : 'text-slate-500 hover:text-indigo-500 hover:bg-indigo-50'
                             }`}
                           title="Move down"
                         >
@@ -219,7 +219,7 @@ const Planner: React.FC = () => {
                             value={stop.note || ''}
                             onChange={(e) => handleNoteUpdate(stop.id, e.target.value)}
                             placeholder="Add a personal note for this stop..."
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans text-slate-600 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                             rows={3}
                           />
                           {expandedNoteId === stop.id && !stop.note && (
