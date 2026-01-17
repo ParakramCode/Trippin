@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import { Journey, Stop, Moment } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 
@@ -18,6 +18,8 @@ interface JourneyContextType {
   setIsFollowing: (v: boolean) => void;
   visitedStopIds: string[];
   markStopAsVisited: (stopId: string) => void;
+  savedJourneyIds: Set<string>;
+  isAlreadySaved: (journeyId: string) => boolean;
 }
 
 const JourneyContext = createContext<JourneyContextType | undefined>(undefined);
@@ -47,6 +49,11 @@ export const defaultJourneys: Journey[] = [
     location: 'California, USA',
     duration: '3 Days',
     imageUrl: 'https://picsum.photos/seed/coast/800/1200',
+    author: {
+      name: 'Sarah Jenkins',
+      avatar: 'https://i.pravatar.cc/150?u=sarah',
+      bio: 'Coastal explorer and photographer.'
+    },
     stops: [
       { id: '1', name: 'San Francisco', coordinates: [-122.4194, 37.7749], imageUrl: 'https://picsum.photos/seed/sf/300/200', description: 'Iconic city by the bay featuring the Golden Gate Bridge.' },
       { id: '2', name: 'Sausalito', coordinates: [-122.4853, 37.8591], imageUrl: 'https://picsum.photos/seed/sau/300/200', description: 'Charming seaside town with stunning skyline views.' },
@@ -63,6 +70,11 @@ export const defaultJourneys: Journey[] = [
     location: 'California, USA',
     duration: '2 Days',
     imageUrl: 'https://picsum.photos/seed/bigsur/800/1200',
+    author: {
+      name: 'Sarah Jenkins',
+      avatar: 'https://i.pravatar.cc/150?u=sarah',
+      bio: 'Coastal explorer and photographer.'
+    },
     stops: [
       { id: '4', name: 'Monterey', coordinates: [-121.8947, 36.6002], imageUrl: 'https://picsum.photos/seed/monterey/300/200', description: 'Historic cannery row and world-class aquarium.' },
       { id: '5', name: 'Bixby Bridge', coordinates: [-121.9017, 36.3715], imageUrl: 'https://picsum.photos/seed/bixby/300/200', description: 'Famous arch bridge with breathtaking coastal views.' },
@@ -76,6 +88,11 @@ export const defaultJourneys: Journey[] = [
     location: 'Himachal Pradesh, India',
     duration: '5 Days',
     imageUrl: 'https://images.unsplash.com/photo-1593181829283-a4c3f5966601?q=80&w=800&auto=format&fit=crop',
+    author: {
+      name: 'Arjun Mehta',
+      avatar: 'https://i.pravatar.cc/150?u=arjun',
+      bio: 'Himalayan trekker.'
+    },
     stops: [
       { id: '7', name: 'Kaza', coordinates: [78.0710, 32.2276], imageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=300', description: 'Remote capital of Spiti situated on the banks of Spiti River.' },
       { id: '8', name: 'Key Monastery', coordinates: [78.0120, 32.2960], imageUrl: 'https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=300', description: 'Famous Tibetan Buddhist monastery perched on a hill.' },
@@ -89,6 +106,11 @@ export const defaultJourneys: Journey[] = [
     location: 'Himachal Pradesh, India',
     duration: '3 Days',
     imageUrl: 'https://images.unsplash.com/photo-1589136777351-9432851982b6?q=80&w=800&auto=format&fit=crop',
+    author: {
+      name: 'Arjun Mehta',
+      avatar: 'https://i.pravatar.cc/150?u=arjun',
+      bio: 'Himalayan trekker.'
+    },
     stops: [
       { id: '10', name: 'Hadimba Temple', coordinates: [77.1887, 32.2450], imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=300', description: 'Ancient cave temple dedicated to Hidimbi Devi.' },
       { id: '11', name: 'Jogini Falls', coordinates: [77.1950, 32.2600], imageUrl: 'https://images.unsplash.com/photo-1589136777351-9432851982b6?w=300', description: 'Scenic path leading to a majestic waterfall.' },
@@ -102,6 +124,11 @@ export const defaultJourneys: Journey[] = [
     location: 'Himachal Pradesh, India',
     duration: '2 Days',
     imageUrl: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?q=80&w=800&auto=format&fit=crop',
+    author: {
+      name: 'Priya Singh',
+      avatar: 'https://i.pravatar.cc/150?u=priya',
+      bio: 'Nature lover.'
+    },
     stops: [
       { id: '13', name: 'The Ridge', coordinates: [77.1734, 31.1048], imageUrl: 'https://images.unsplash.com/photo-1533470125816-724bc2f11c52?w=300', description: 'Hub of cultural activities with colonial architecture.' },
       { id: '14', name: 'Jakhu Temple', coordinates: [77.1800, 31.1000], imageUrl: 'https://images.unsplash.com/photo-1626014902120-e22067711f98?w=300', description: 'Ancient temple dedicated to Lord Hanuman with panoramic views.' },
@@ -115,6 +142,11 @@ export const defaultJourneys: Journey[] = [
     location: 'Himachal Pradesh, India',
     duration: '4 Days',
     imageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?q=80&w=800&auto=format&fit=crop',
+    author: {
+      name: 'Priya Singh',
+      avatar: 'https://i.pravatar.cc/150?u=priya',
+      bio: 'Nature lover.'
+    },
     stops: [
       { id: '16', name: 'Parvati River', coordinates: [77.3150, 32.0100], imageUrl: 'https://images.unsplash.com/photo-1504780521369-144d477b760a?w=300', description: 'Serene river flowing through the Parvati Valley.' },
       { id: '17', name: 'Manikaran', coordinates: [77.3500, 32.0200], imageUrl: 'https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=300', description: 'Religious center famous for hot springs.' },
@@ -128,6 +160,11 @@ export const defaultJourneys: Journey[] = [
     location: 'Himachal & Ladakh, India',
     duration: '2 Days',
     imageUrl: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800',
+    author: {
+      name: 'Vikram Rider',
+      avatar: 'https://i.pravatar.cc/150?u=vikram',
+      bio: 'Motorcycle enthusiast.'
+    },
     stops: [
       { id: '19', name: 'Rohtang Pass', coordinates: [77.2466, 32.3716], imageUrl: 'https://images.unsplash.com/photo-1595842878696-3c0f9k8j?w=300', description: 'High mountain pass connecting Kullu Valley with Lahaul and Spiti.' },
       { id: '20', name: 'Keylong', coordinates: [77.0320, 32.5710], imageUrl: 'https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=300', description: 'Administrative center of Lahaul and Spiti.' },
@@ -213,11 +250,22 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   }, [setVisitedStopIds]);
 
+  // Memoized set of saved journey IDs for instant lookup
+  const savedJourneyIds = useMemo(() => {
+    return new Set(plannerJourneys.map(j => j.clonedFrom || j.id));
+  }, [plannerJourneys]);
+
+  // Memoized helper function for checking if a journey is already saved
+  const isAlreadySaved = useCallback((journeyId: string) => {
+    return savedJourneyIds.has(journeyId);
+  }, [savedJourneyIds]);
+
   const value = {
     journeys, plannerJourneys, addJourney, persistJourney, cloneToPlanner, removeFromPlanner,
     activeJourney, setActiveJourney, loadJourney,
     userLocation, userHeading, isFollowing, setIsFollowing,
-    visitedStopIds, markStopAsVisited
+    visitedStopIds, markStopAsVisited,
+    savedJourneyIds, isAlreadySaved
   };
 
   return (

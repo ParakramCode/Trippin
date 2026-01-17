@@ -15,7 +15,7 @@ const VITE_MAPBOX_TOKEN = "pk.eyJ1IjoicGFha2kyMDA2IiwiYSI6ImNta2NibDA2eDBkZ3czZH
 
 const HomeMap: React.FC = () => {
     const mapRef = useRef<MapRef>(null);
-    const { activeJourney, cloneToPlanner, plannerJourneys, isFollowing } = useJourneys();
+    const { activeJourney, cloneToPlanner, isFollowing, savedJourneyIds } = useJourneys();
     const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const navigate = useNavigate();
@@ -34,14 +34,6 @@ const HomeMap: React.FC = () => {
             }
         }
     }, [activeJourney]);
-
-    // Check for persistence
-    const [isSaved, setIsSaved] = useState(false);
-    useEffect(() => {
-        if (activeJourney) {
-            setIsSaved(plannerJourneys.some(j => j.id === activeJourney.id));
-        }
-    }, [activeJourney, plannerJourneys]);
 
     const handleAddToJourneys = () => {
         if (!activeJourney) return;
@@ -77,32 +69,43 @@ const HomeMap: React.FC = () => {
                 onStopSelect={handleStopSelect}
             />
 
-            {/* Add to My Journeys Button - Minimalist Pill */}
-            {!isFollowing && !isSaved && (
-                <div className="absolute top-6 right-6 z-20">
-                    <button
-                        onClick={handleAddToJourneys}
-                        className={`
-                            px-4 py-2 rounded-full flex items-center gap-2
-                            bg-white/20 backdrop-blur-2xl border border-white/20 shadow-lg 
-                            hover:bg-white/30 hover:scale-105 active:scale-95 transition-all duration-200 
-                            group cursor-pointer
-                            ${toastMessage ? 'bg-emerald-500/10 border-emerald-500/30' : ''}
-                        `}
-                    >
-                        {toastMessage ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-600">
-                                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-                            </svg>
-                        ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-slate-700 group-hover:text-slate-900">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            </svg>
-                        )}
-                        <span className={`text-[12px] font-sans font-medium ${toastMessage ? 'text-emerald-700 font-bold' : 'text-slate-700'}`}>
-                            {toastMessage ? 'Saved' : 'Add to My Journeys'}
-                        </span>
-                    </button>
+            {/* Top Right Controls: Author & Add Button */}
+            {!isFollowing && activeJourney && (
+                <div key={activeJourney.id} className="absolute top-6 right-6 z-[100] flex flex-col items-end gap-3">
+                    {/* Author Tag */}
+                    {activeJourney.author && (
+                        <div className="flex items-center gap-2 pl-1 pr-3 py-1 bg-white/20 backdrop-blur-2xl border border-white/20 rounded-full shadow-sm">
+                            <img src={activeJourney.author.avatar} alt={activeJourney.author.name} className="w-5 h-5 rounded-full object-cover border border-white/30" />
+                            <span className="text-[10px] font-sans font-bold text-slate-700">Curated by @{activeJourney.author.name}</span>
+                        </div>
+                    )}
+
+                    {/* Add to My Journeys Button - Only show if not already saved */}
+                    {activeJourney && !savedJourneyIds.has(activeJourney.id) && (
+                        <button
+                            onClick={handleAddToJourneys}
+                            className={`
+                                px-4 py-2 rounded-full flex items-center gap-2
+                                bg-white/20 backdrop-blur-2xl border border-white/20 shadow-lg 
+                                hover:bg-white/30 hover:scale-105 active:scale-95 transition-all duration-200 
+                                group cursor-pointer
+                                ${toastMessage ? 'bg-emerald-500/10 border-emerald-500/30' : ''}
+                            `}
+                        >
+                            {toastMessage ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-600">
+                                    <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                                </svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-slate-700 group-hover:text-slate-900">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                            )}
+                            <span className={`text-[12px] font-sans font-medium ${toastMessage ? 'text-emerald-700 font-bold' : 'text-slate-700'}`}>
+                                {toastMessage ? 'Saved' : 'Add to My Journeys'}
+                            </span>
+                        </button>
+                    )}
                 </div>
             )}
 

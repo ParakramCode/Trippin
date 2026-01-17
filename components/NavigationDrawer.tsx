@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Stop } from '../types';
 import { useJourneys } from '../context/JourneyContext';
@@ -13,6 +13,7 @@ interface NavigationDrawerProps {
 
 const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStopId, onSelect }) => {
     const { userLocation, setIsFollowing, visitedStopIds } = useJourneys();
+    const [isOpen, setIsOpen] = useState(true);
 
     // Determine the closest stop to highlight
     let closestStopIndex = -1;
@@ -21,22 +22,44 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
         closestStopIndex = checkProximity(userLocation[1], userLocation[0], stopCoords as [number, number][]);
     }
 
+    const toggleDrawer = () => setIsOpen(!isOpen);
+
+    const handleDragEnd = (_: any, info: any) => {
+        // Swipe left to close, right to open
+        if (info.offset.x < -50 && isOpen) {
+            setIsOpen(false);
+        } else if (info.offset.x > 50 && !isOpen) {
+            setIsOpen(true);
+        }
+    };
+
     return (
         <motion.div
-            initial={{ x: '-100%', opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: '-100%', opacity: 0 }}
+            drag="x"
+            dragConstraints={{ left: -310, right: 0 }}
+            dragElastic={0.05}
+            onDragEnd={handleDragEnd}
+            initial={{ x: 0 }} // Start Open
+            animate={{ x: isOpen ? 0 : -310 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="absolute top-0 left-0 bottom-0 w-80 bg-white/90 backdrop-blur-xl border-r border-white/20 shadow-2xl z-30 flex flex-col"
         >
+            {/* The Pull-Tab Component - Edge Handle */}
+            <div
+                onClick={toggleDrawer}
+                className="absolute top-0 bottom-0 right-0 w-8 pr-1 flex items-center justify-end cursor-pointer group z-50 touch-manipulation"
+            >
+                <div className="w-1 h-16 bg-slate-400/50 rounded-full group-hover:bg-slate-500/70 transition-colors backdrop-blur-md shadow-sm" />
+            </div>
+
             {/* Header */}
-            <div className="p-6 border-b border-slate-100/50 flex flex-col gap-1">
+            <div className="p-6 border-b border-slate-100/50 flex flex-col gap-1 select-none">
                 <span className="text-xs font-bold tracking-widest uppercase text-indigo-500">Live Navigation</span>
-                <h2 className="text-2xl font-serif text-slate-800">Your Route</h2>
+                <h2 className="text-2xl font-sans font-bold text-slate-800">Your Route</h2>
             </div>
 
             {/* Stops List */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-0 relative">
+            <div className={`flex-1 overflow-y-auto px-6 py-4 space-y-0 relative select-none transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-30'}`}>
                 {/* Vertical Line Connector */}
                 <div className="absolute left-[39px] top-8 bottom-8 w-0.5 border-l-2 border-dashed border-slate-300 z-0" />
 
@@ -44,8 +67,6 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
                     const isSelected = selectedStopId === stop.id;
                     const isClosest = closestStopIndex === index;
                     const isVisited = visitedStopIds.includes(stop.id);
-
-                    // Logic: Visited trumps Closest. If Visited, show Check. If Closest, show Pulse/Active.
 
                     // Calculate distance if user location is available
                     let distanceText = '-- km';
@@ -82,18 +103,18 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
 
                             {/* Content */}
                             <div className={`flex-1 min-w-0 transition-transform duration-300 ${isClosest ? 'translate-x-1' : ''}`}>
-                                <h3 className={`font-serif text-lg leading-tight truncate transition-colors 
-                                    ${isClosest ? 'text-indigo-600 font-bold' : isVisited ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-700'}
+                                <h3 className={`font-sans text-lg leading-tight truncate transition-colors 
+                                    ${isClosest ? 'text-indigo-600 font-bold' : isVisited ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-800'}
                                 `}>
                                     {stop.name}
                                 </h3>
-                                <div className="flex items-center gap-2 mt-0.5">
+                                <div className="flex items-center justify-between mt-0.5 pr-2">
                                     <span className={`text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded-sm
                                         ${isClosest ? 'bg-indigo-100 text-indigo-600' : isVisited ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}
                                     `}>
                                         {isVisited ? 'VISITED' : `STOP ${index + 1}`}
                                     </span>
-                                    <span className={`text-xs font-mono ${isClosest ? 'text-indigo-500 font-bold' : 'text-slate-500'}`}>
+                                    <span className={`text-xs font-mono ml-2 ${isClosest ? 'text-indigo-500 font-bold' : 'text-slate-500'}`}>
                                         {distanceText}
                                     </span>
                                 </div>
@@ -101,7 +122,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
 
                             {/* Active Indicator Dot on the right */}
                             {isClosest && !isVisited && (
-                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse mr-2" />
+                                <div className="absolute right-0 w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
                             )}
                         </div>
                     );
