@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import { Journey, Stop, Moment } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { createJourneyFork } from '../src/domain/forkJourney';
+import { createJourneyFork, isJourneyFork } from '../src/domain/forkJourney';
 
 /**
  * View mode for journey display
@@ -11,6 +11,29 @@ import { createJourneyFork } from '../src/domain/forkJourney';
  * - NONE: No journey loaded
  */
 export type ViewMode = 'INSPECTION' | 'ACTIVE' | 'NONE';
+
+/**
+ * Journey mode - unified semantic state (Phase 2.2)
+ * 
+ * Derived from multiple state flags to provide single source of truth for journey state.
+ * This replaces manual checking of isFollowing, status, isCompleted, etc.
+ * 
+ * Modes:
+ * - INSPECTION: Viewing a journey in read-only mode (template or fork preview)
+ * - PLANNING: Editing/planning a fork (not yet started navigation)
+ * - NAVIGATION: Actively navigating a fork (live mode, following enabled)
+ * - COMPLETED: Journey has been completed by user
+ * 
+ * Derivation Logic:
+ * 1. If inspectionJourney exists → INSPECTION
+ * 2. If activeJourney.isCompleted → COMPLETED
+ * 3. If activeJourney.status === 'LIVE' OR isFollowing → NAVIGATION
+ * 4. If activeJourney exists → PLANNING
+ * 5. Otherwise → null (no journey loaded)
+ * 
+ * Use this instead of manually checking state flags.
+ */
+export type JourneyMode = 'INSPECTION' | 'PLANNING' | 'NAVIGATION' | 'COMPLETED';
 
 interface JourneyContextType {
   // STORAGE SPLIT: Separated template (read-only) from user (mutable) journeys
@@ -98,6 +121,24 @@ interface JourneyContextType {
   currentJourney: Journey | null;
 
   /**
+   * READ-ONLY INDICATOR (Derived - Phase 2.3)
+   * 
+   * isReadOnlyJourney: Boolean indicating if current journey is read-only
+   * - true: inspectionJourney is set (viewing template/preview, no mutations allowed)
+   * - false: activeJourney is set (user-owned fork, mutations allowed)
+   * 
+   * Purpose: Toggle UI elements based on mutability.
+   * Use this to enable/disable edit buttons, forms, etc.
+   * 
+   * Example:
+   * ```typescript
+   * {!isReadOnlyJourney && <EditButton />}
+   * <TextField disabled={isReadOnlyJourney} />
+   * ```
+   */
+  isReadOnlyJourney: boolean;
+
+  /**
    * VIEW MODE (Derived)
    * 
    * viewMode: Indicates the current viewing/editing mode
@@ -111,11 +152,46 @@ interface JourneyContextType {
    */
   viewMode: ViewMode;
 
+
+  /**
+   * JOURNEY MODE (Derived - Phase 2.2)
+   * 
+   * journeyMode: Unified semantic state for journey lifecycle
+   * - INSPECTION: Read-only preview (inspectionJourney set)
+   * - PLANNING: Editing a fork, not yet started (activeJourney, no navigation)
+   * - NAVIGATION: Actively navigating (activeJourney with status=LIVE or isFollowing)
+   * - COMPLETED: Journey finished (activeJourney.isCompleted)
+   * - null: No journey loaded
+   * 
+   * Purpose: Single source of truth for journey state.
+   * Replaces manual checking of isFollowing, status, isCompleted flags.
+   * Preferred over individual flags for state determination.
+   * 
+   * Examples:
+   * ```typescript
+   * if (journeyMode === 'NAVIGATION') {
+   *   // Show live navigation UI
+   * } else if (journeyMode === 'PLANNING') {
+   *   // Show planning/editing UI
+   * }
+   * ```
+   * 
+   * NOTE: Legacy flags (isFollowing, status, isCompleted) still exist
+   * for backward compatibility but journeyMode is the preferred API.
+   */
+  journeyMode: JourneyMode | null;
+
   /** @deprecated Mixes discovery and planner sources. Replace with preview/fork flow. */
   loadJourney: (journeyId: string) => void;
   userLocation: [number, number] | null;
   userHeading: number | null;
-  /** @deprecated Should be derived from liveJourneyStore state, not separate flag */
+
+  /**
+   * @deprecated Legacy navigation flag. Use journeyMode === 'NAVIGATION' instead.
+   * 
+   * This flag is manually set/unset and can drift from actual navigation state.
+   * journeyMode derives navigation state from multiple sources for accuracy.
+   */
   isFollowing: boolean;
   setIsFollowing: (v: boolean) => void;
   /** @deprecated Global visited state without journey ownership. Move to JourneyFork.stops[].visited */
@@ -442,23 +518,68 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
   });
 
   // ============================================================================
-  // DERIVED SEMANTIC STATE (Read vs Edit Clarity)
+  // DERIVED SEMANTIC STATE (Read vs Write Separation)
   // ============================================================================
 
   /**
-   * currentJourney: Single source of truth for "journey to display"
+   * currentJourney: Single source of truth for "journey to display" (Phase 2.3)
+   * 
+   * READ VS WRITE SEPARATION:
+   * - currentJourney = USE FOR RENDERING (map display, UI components)
+   * - activeJourney = USE FOR MUTATIONS (editing, updating state)
+   * - inspectionJourney = READ-ONLY EXPLORATION (templates, previews)
    * 
    * Display Priority Rule:
    * 1. inspectionJourney (if present) → Read-only exploration
-   * 2. activeJourney (if present) → Mutable editing
+   * 2. activeJourney (if present) → Mutable editing  
    * 3. null → No journey loaded
    * 
-   * Components should use this for rendering instead of choosing manually.
-   * This centralizes the display priority decision.
+   * Purpose:
+   * - Components render currentJourney (display concern)
+   * - Components mutate activeJourney only (write concern)
+   * - Never mutate through currentJourney reference
+   * 
+   * Example:
+   * ```typescript
+   * // GOOD: Render from currentJourney
+   * <JourneyMap journey={currentJourney} />
+   * 
+   * // GOOD: Mutate activeJourney
+   * if (activeJourney) {
+   *   updateStopNote(activeJourney.id, stopId, note);
+   * }
+   * 
+   * // BAD: Don't assume currentJourney is mutable
+   * updateStopNote(currentJourney.id, stopId, note);  // ❌ Could be template!
+   * ```
    */
   const currentJourney = useMemo(
     () => inspectionJourney ?? activeJourney,
     [inspectionJourney, activeJourney]
+  );
+
+  /**
+   * isReadOnlyJourney: Indicates if current journey is read-only (Phase 2.3)
+   * 
+   * Returns true when:
+   * - inspectionJourney is set (viewing template or fork preview)
+   * - Mutations should be disabled in UI
+   * - Edit buttons should be hidden/disabled
+   * 
+   * Returns false when:
+   * - activeJourney is set (user-owned fork, can edit)
+   * - Mutations allowed
+   * - Edit UI should be enabled
+   * 
+   * Use this to toggle UI elements:
+   * ```typescript
+   * {!isReadOnlyJourney && <EditButton />}
+   * <SaveButton disabled={isReadOnlyJourney} />
+   * ```
+   */
+  const isReadOnlyJourney = useMemo(
+    () => Boolean(inspectionJourney),
+    [inspectionJourney]
   );
 
   /**
@@ -477,41 +598,78 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     return 'NONE';
   }, [inspectionJourney, activeJourney]);
 
+
+
   /**
-   * Wrapped setActiveJourney with runtime validation
+   * ACTIVE JOURNEY ENFORCEMENT (Phase 2.1)
    * 
-   * WARNING: This validates but does NOT block execution.
-   * Purpose: Surface unsafe usage without breaking legacy code.
+   * setActiveJourney with strict fork validation
    * 
-   * Validation:
-   * - Logs warning if passed a JourneySource (template)
-   * - Suggests using loadJourney() or forking first
-   * - Still sets the journey (backward compatibility)
+   * ENFORCEMENT RULES:
+   * - BLOCKS if journey is a JourneySource (template)
+   * - ALLOWS only if journey is a JourneyFork (user-owned)
+   * - Semantic guard: activeJourney = mutable forks ONLY
    * 
-   * TODO Phase 3: Make this private, force all activation through loadJourney()
+   * Why this is NOT breaking:
+   * - loadJourney() already routes templates to inspectionJourney
+   * - Components should use loadJourney(), not setActiveJourney directly
+   * - This prevents accidental misuse, not intentional workflows
+   * 
+   * If blocked:
+   * - Journey is NOT set (prevents template corruption)
+   * - Console warning explains why and how to fix
+   * - Suggests using inspectionJourney or forking first
+   * 
+   * @param journey - Journey to set as active (must be a fork)
    */
   const setActiveJourneyWithValidation = useCallback((journey: Journey) => {
-    // Check if this looks like a JourneySource (no fork metadata)
-    const isLikelySource = !journey.sourceJourneyId && !journey.clonedAt;
-
-    if (isLikelySource) {
-      console.warn(
-        '[setActiveJourney] WARNING: Setting a journey without fork metadata as active.',
-        '\nThis journey appears to be a JourneySource (template), not a JourneyFork.',
-        '\nActiveJourney should only contain user-owned forks.',
+    // PHASE 2.1: STRICT FORK VALIDATION
+    // Check if this is a JourneyFork (has fork metadata)
+    // Type cast needed because Journey type is broader than domain types
+    if (!isJourneyFork(journey as any)) {
+      // This is a JourneySource (template) - BLOCK IT
+      console.error(
+        '╔════════════════════════════════════════════════════════════════╗',
+        '\n║ [setActiveJourney] BLOCKED: Cannot set template as active     ║',
+        '\n╚════════════════════════════════════════════════════════════════╝',
         '\n',
-        '\nTo fix:',
-        '\n1. Use loadJourney(journeyId) for proper routing, OR',
-        '\n2. Fork the journey first: forkJourney(journey), then activate the fork',
+        '\n⚠️  activeJourney can ONLY contain JourneyFork (user-owned), not JourneySource (template).',
         '\n',
-        '\nJourney ID:', journey.id,
-        '\nJourney Title:', journey.title
+        '\n📋 Journey Details:',
+        '\n   ID:', journey.id,
+        '\n   Title:', journey.title,
+        '\n   Type: JourneySource (template/discovered)',
+        '\n',
+        '\n❌ This operation was BLOCKED to prevent template corruption.',
+        '\n',
+        '\n✅ To fix, choose ONE of these options:',
+        '\n',
+        '\n   Option 1 (Recommended): Use loadJourney() instead',
+        '\n   ────────────────────────────────────────────────',
+        '\n   loadJourney(\'' + journey.id + '\')  // Automatically routes to inspectionJourney',
+        '\n',
+        '\n   Option 2: Fork first, then activate the fork',
+        '\n   ─────────────────────────────────────────────',
+        '\n   forkJourney(journey)  // Creates user-owned copy',
+        '\n   // Then activate the fork from My Trips',
+        '\n',
+        '\n   Option 3: For read-only viewing',
+        '\n   ─────────────────────────────────────',
+        '\n   setInspectionJourney(journey)  // View without mutating',
+        '\n',
+        '\n📚 Learn more: See ACTIVE_JOURNEY_OWNERSHIP.md',
+        '\n'
       );
+
+      // DO NOT SET - this is the enforcement
+      // Template journeys must never become activeJourney
+      return;
     }
 
-    // Still set it (backward compatibility - don't break)
+    // Passed validation - this is a JourneyFork, safe to set
     setActiveJourney(journey);
   }, []);
+
 
 
   /**
@@ -556,21 +714,30 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [setPlannerJourneys]);
 
   /**
-   * loadJourney - NOW USES INSPECTION MODE FOR DISCOVERED JOURNEYS
+   * loadJourney - CORRECT WAY TO ACTIVATE/VIEW JOURNEYS (Phase 2.1)
    * 
-   * Critical change: Discovered journeys now go to inspectionJourney (read-only)
-   * instead of activeJourney (mutable).
+   * This function implements the ONLY safe routing for journey activation.
+   * It automatically decides between inspection (read-only) and active (mutable) modes.
    * 
-   * Behavior:
-   * - If journey is from defaultJourneys (discovered): → inspectionJourney
-   * - If journey is from plannerJourneys (forked): → activeJourney
+   * PHASE 2.1 ENFORCEMENT:
+   * - Templates (JourneySource) → inspectionJourney ONLY (read-only)
+   * - Forks (JourneyFork) → activeJourney ONLY (mutable)
+   * - Templates can NEVER become activeJourney (blocked by setActiveJourney guard)
    * 
-   * Why:
-   * - Discovered journeys are JourneySource (immutable templates)
-   * - They must be viewable but never mutable
-   * - Only forked journeys (JourneyFork) should be active
+   * Routing Logic:
+   * 1. If ID found in templateJourneys → setInspectionJourney (read-only exploration)
+   * 2. If ID found in plannerJourneys → setActiveJourney (mutable editing)
+   * 3. If not found → clears both (journey doesn't exist)
    * 
-   * Map will prefer inspectionJourney for display, preventing mutations.
+   * Why this is the correct path:
+   * - Prevents template corruption (automatic routing)
+   * - Enforces semantic boundaries (templates vs forks)
+   * - User-friendly (no mode selection needed)
+   * - Type-safe (only forks reach activeJourney)
+   * 
+   * DO NOT use setActiveJourney directly - use this function instead.
+   * 
+   * @param journeyId - Journey ID to load (auto-detects source vs fork)
    */
   const loadJourney = useCallback((journeyId: string) => {
     // STORAGE SPLIT: Check template journeys (read-only) vs user forks (mutable)
@@ -580,6 +747,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (templateJourney) {
       // Template journey: Use read-only inspection mode
       // This prevents the immutable template from becoming mutable
+      // PHASE 2.1: Templates can NEVER go to activeJourney (enforced by guard)
       setInspectionJourney(templateJourney);
       setActiveJourney(null); // Clear active to prevent confusion
       localStorage.setItem('inspectionJourneyId', journeyId);
@@ -590,16 +758,69 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     const forkedJourney = plannerJourneys.find(j => j.id === journeyId);
     if (forkedJourney) {
       // Forked journey: Can be active (mutable)
+      // Safe to set as activeJourney because it's a JourneyFork
       setInspectionJourney(null); // Clear inspection mode
-      setActiveJourney(forkedJourney);
+      setActiveJourney(forkedJourney);  // Direct call is safe here (guaranteed fork)
       localStorage.setItem('activeJourneyId', journeyId);
       return;
     }
-  }, [journeys, plannerJourneys]);
+  }, [templateJourneys, plannerJourneys]);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [userHeading, setUserHeading] = useState<number | null>(0);
   const [isFollowing, setIsFollowing] = useState(false);
+
+  /**
+   * DERIVED JOURNEY MODE (Phase 2.2)
+   * 
+   * journeyMode: Unified semantic journey state
+   * 
+   * Derivation Priority (first match wins):
+   * 1. inspectionJourney exists → INSPECTION (read-only preview)
+   * 2. activeJourney.isCompleted === true → COMPLETED (finished)
+   * 3. activeJourney.status === 'LIVE' → NAVIGATION (live mode)
+   * 4. isFollowing === true → NAVIGATION (legacy flag support)
+   * 5. activeJourney exists → PLANNING (editing/planning)
+   * 6. Otherwise → null (no journey loaded)
+   * 
+   * This replaces manual flag checking with single semantic state.
+   * Preferred over checking isFollowing, status, isCompleted individually.
+   * 
+   * Legacy flags (isFollowing, status, isCompleted) still exist for
+   * backward compatibility but journeyMode is the preferred API.
+   */
+  const journeyMode: JourneyMode | null = useMemo(() => {
+    // Priority 1: Inspection mode (read-only preview)
+    if (inspectionJourney) {
+      return 'INSPECTION';
+    }
+
+    // No activeJourney means no journey loaded
+    if (!activeJourney) {
+      return null;
+    }
+
+    // Priority 2: Completed journey
+    if (activeJourney.isCompleted === true) {
+      return 'COMPLETED';
+    }
+
+    // Priority 3: Live navigation (status flag)
+    if (activeJourney.status === 'LIVE') {
+      return 'NAVIGATION';
+    }
+
+    // Priority 4: Live navigation (legacy isFollowing flag)
+    // NOTE: isFollowing is a manual flag, can be out of sync
+    // but we respect it for backward compatibility
+    if (isFollowing) {
+      return 'NAVIGATION';
+    }
+
+    // Priority 5: Default for activeJourney - planning/editing mode
+    return 'PLANNING';
+  }, [inspectionJourney, activeJourney, isFollowing]);
+
   // TODO: UNSAFE MUTATION - Global visited stops list
   // ISSUE: visitedStopIds is stored globally, but should be per-journey.
   // If a user discovers Journey A, marks stops visited, then forks it,
@@ -989,8 +1210,10 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     loadJourney,
 
     // DERIVED DISPLAY STATE (NEW - use these for clarity)
-    currentJourney,  // ✅ NEW: Single source of truth for display
-    viewMode,        // ✅ NEW: Explicit mode (INSPECTION | ACTIVE | NONE)
+    currentJourney,    // ✅ Phase 2.3: Single source for rendering (read concern)
+    isReadOnlyJourney, // ✅ Phase 2.3: Boolean for UI toggling (disabled states)
+    viewMode,          // ✅ Phase 1: Explicit mode (INSPECTION | ACTIVE | NONE)
+    journeyMode,       // ✅ Phase 2.2: Unified journey state (INSPECTION | PLANNING | NAVIGATION | COMPLETED)
 
     // ============================================================================
 
