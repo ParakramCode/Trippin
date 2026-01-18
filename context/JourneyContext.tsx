@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import { Journey, Stop, Moment } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
+import { createJourneyFork } from '../src/domain/forkJourney';
+
+/**
+ * View mode for journey display
+ * 
+ * - INSPECTION: Read-only preview mode (inspectionJourney is set)
+ * - ACTIVE: Mutable edit mode (activeJourney is set, inspectionJourney is null)
+ * - NONE: No journey loaded
+ */
+export type ViewMode = 'INSPECTION' | 'ACTIVE' | 'NONE';
 
 interface JourneyContextType {
   // STORAGE SPLIT: Separated template (read-only) from user (mutable) journeys
@@ -24,6 +34,10 @@ interface JourneyContextType {
   removeStop: (journeyId: string, stopId: string) => void;
   updateStopNote: (journeyId: string, stopId: string, note: string) => void;
 
+  // ============================================================================
+  // SEMANTIC JOURNEY STATE (Read vs Edit Separation)
+  // ============================================================================
+
   /**
    * READ-ONLY INSPECTION MODE
    * 
@@ -40,10 +54,63 @@ interface JourneyContextType {
   inspectionJourney: Journey | null;
   setInspectionJourney: (journey: Journey | null) => void;
 
-  /** @deprecated Can reference JourneySource (discovered), should only be JourneyFork. Use liveJourneyStore. */
+  /**
+   * MUTABLE ACTIVE JOURNEY
+   * 
+   * activeJourney: Journey being edited/navigated (mutable)
+   * 
+   * INVARIANT (enforced by guards, not types):
+   * - Should ONLY contain JourneyFork | null
+   * - Type says Journey for backward compatibility
+   * - Runtime guards prevent JourneySource assignment in mutation functions
+   * 
+   * Purpose: User-owned journey that can receive mutations.
+   * Only forks should be active. Templates must be forked first.
+   * 
+   * @deprecated Type is too permissive. Phase 3 will narrow to JourneyFork | null
+   */
   activeJourney: Journey | null;
-  /** @deprecated Allows setting discovered journeys as active. Use liveJourneyStore.setLive(). */
+
+  /**
+   * @deprecated Allows setting discovered journeys as active. Use liveJourneyStore.setLive().
+   * 
+   * WARNING: Calling this with a JourneySource will log a warning but not block.
+   * Use loadJourney() instead for proper routing.
+   */
   setActiveJourney: (journey: Journey) => void;
+
+  /**
+   * DISPLAY JOURNEY (Derived)
+   * 
+   * currentJourney: The journey currently displayed on the map
+   * - Computed as: inspectionJourney ?? activeJourney
+   * - Read-only reference, never mutate through this
+   * - Represents display priority (inspection takes precedence)
+   * 
+   * Purpose: Single source of truth for "which journey to render".
+   * Components should use this instead of choosing between inspection/active.
+   * 
+   * Display Priority:
+   * 1. inspectionJourney (if present) → Read-only exploration
+   * 2. activeJourney (if present) → Mutable editing
+   * 3. null (if neither) → No journey loaded
+   */
+  currentJourney: Journey | null;
+
+  /**
+   * VIEW MODE (Derived)
+   * 
+   * viewMode: Indicates the current viewing/editing mode
+   * - INSPECTION: User is previewing (inspectionJourney exists)
+   * - ACTIVE: User is editing/navigating (activeJourney exists, inspection null)
+   * - NONE: No journey loaded
+   * 
+   * Purpose: Explicit mode instead of inferring from state presence.
+   * Components can check viewMode instead of !!inspectionJourney.
+   * Makes read-only vs mutable distinction explicit.
+   */
+  viewMode: ViewMode;
+
   /** @deprecated Mixes discovery and planner sources. Replace with preview/fork flow. */
   loadJourney: (journeyId: string) => void;
   userLocation: [number, number] | null;
@@ -374,6 +441,79 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     return (defaultJourneys && defaultJourneys.length > 0) ? defaultJourneys[0] : null;
   });
 
+  // ============================================================================
+  // DERIVED SEMANTIC STATE (Read vs Edit Clarity)
+  // ============================================================================
+
+  /**
+   * currentJourney: Single source of truth for "journey to display"
+   * 
+   * Display Priority Rule:
+   * 1. inspectionJourney (if present) → Read-only exploration
+   * 2. activeJourney (if present) → Mutable editing
+   * 3. null → No journey loaded
+   * 
+   * Components should use this for rendering instead of choosing manually.
+   * This centralizes the display priority decision.
+   */
+  const currentJourney = useMemo(
+    () => inspectionJourney ?? activeJourney,
+    [inspectionJourney, activeJourney]
+  );
+
+  /**
+   * viewMode: Explicit mode indicator (INSPECTION | ACTIVE | NONE)
+   * 
+   * Mode Determination:
+   * - INSPECTION: inspectionJourney exists (read-only preview)
+   * - ACTIVE: activeJourney exists AND inspectionJourney is null (mutable edit)
+   * - NONE: Both are null (no journey loaded)
+   * 
+   * Components should check viewMode instead of inferring from state presence.
+   */
+  const viewMode: ViewMode = useMemo(() => {
+    if (inspectionJourney) return 'INSPECTION';
+    if (activeJourney) return 'ACTIVE';
+    return 'NONE';
+  }, [inspectionJourney, activeJourney]);
+
+  /**
+   * Wrapped setActiveJourney with runtime validation
+   * 
+   * WARNING: This validates but does NOT block execution.
+   * Purpose: Surface unsafe usage without breaking legacy code.
+   * 
+   * Validation:
+   * - Logs warning if passed a JourneySource (template)
+   * - Suggests using loadJourney() or forking first
+   * - Still sets the journey (backward compatibility)
+   * 
+   * TODO Phase 3: Make this private, force all activation through loadJourney()
+   */
+  const setActiveJourneyWithValidation = useCallback((journey: Journey) => {
+    // Check if this looks like a JourneySource (no fork metadata)
+    const isLikelySource = !journey.sourceJourneyId && !journey.clonedAt;
+
+    if (isLikelySource) {
+      console.warn(
+        '[setActiveJourney] WARNING: Setting a journey without fork metadata as active.',
+        '\nThis journey appears to be a JourneySource (template), not a JourneyFork.',
+        '\nActiveJourney should only contain user-owned forks.',
+        '\n',
+        '\nTo fix:',
+        '\n1. Use loadJourney(journeyId) for proper routing, OR',
+        '\n2. Fork the journey first: forkJourney(journey), then activate the fork',
+        '\n',
+        '\nJourney ID:', journey.id,
+        '\nJourney Title:', journey.title
+      );
+    }
+
+    // Still set it (backward compatibility - don't break)
+    setActiveJourney(journey);
+  }, []);
+
+
   /**
    * @deprecated Creates mixed journey type without proper fork metadata.
    * Use createJourneyFork() from domain utilities instead.
@@ -393,24 +533,22 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
     setPlannerJourneys(prev => [newJourney, ...prev]);
   }, [setPlannerJourneys]);
-  // Fork a journey (create personalized copy for user's planner)
+
+  /**
+   * Fork a journey (create personalized copy for user's planner)
+   * 
+   * Delegates to createJourneyFork() from domain utilities for consistent fork creation.
+   * No more JSON.parse(JSON.stringify()) - single source of truth for fork semantics.
+   * 
+   * @param journey - Journey to fork (can be template or existing fork)
+   */
   const forkJourney = useCallback((journey: Journey) => {
-    const clone = JSON.parse(JSON.stringify(journey));
-    clone.id = `journey-${Date.now()}`;
-    clone.sourceJourneyId = journey.id;
-    clone.clonedAt = Date.now();
+    // Delegate to domain utility for consistent fork creation
+    // TODO: Pass actual user ID when authentication is implemented
+    const fork = createJourneyFork(journey as any, '');  // Empty ownerId for now
 
-    // Initialize visited state for all stops
-    // Each fork gets fresh visited state, allowing users to complete
-    // the same route multiple times with independent progress tracking
-    if (clone.stops) {
-      clone.stops = clone.stops.map((stop: Stop) => ({
-        ...stop,
-        visited: false  // Start fresh for this fork
-      }));
-    }
-
-    setPlannerJourneys(prev => [...prev, clone]);
+    // Add to user's planner
+    setPlannerJourneys(prev => [...prev, fork as any]);
   }, [setPlannerJourneys]);
 
   const removeFromPlanner = useCallback((journeyId: string) => {
@@ -838,11 +976,23 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     addJourney, persistJourney, forkJourney, removeFromPlanner,
     renameJourney, moveStop, removeStop, updateStopNote,
 
+    // ============================================================================
+    // SEMANTIC JOURNEY STATE (Read vs Edit Separation)
+    // ============================================================================
+
     // READ-ONLY INSPECTION MODE
     inspectionJourney, setInspectionJourney,
 
-    // LEGACY ACTIVE JOURNEY (being phased out)
-    activeJourney, setActiveJourney, loadJourney,
+    // MUTABLE ACTIVE JOURNEY (deprecated type, use with caution)
+    activeJourney,
+    setActiveJourney: setActiveJourneyWithValidation,  // ✅ Wrapped with validation
+    loadJourney,
+
+    // DERIVED DISPLAY STATE (NEW - use these for clarity)
+    currentJourney,  // ✅ NEW: Single source of truth for display
+    viewMode,        // ✅ NEW: Explicit mode (INSPECTION | ACTIVE | NONE)
+
+    // ============================================================================
 
     // User state
     userLocation, userHeading, isFollowing, setIsFollowing,
