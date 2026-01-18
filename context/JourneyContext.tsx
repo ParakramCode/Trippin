@@ -27,6 +27,8 @@ interface JourneyContextType {
   isJourneyEditable: (journeyId: string) => boolean;
   savedJourneyIds: Set<string>;
   isAlreadySaved: (journeyId: string) => boolean;
+  createCustomJourney: () => Journey;
+  startJourney: (journeyId: string) => void;
 }
 
 const JourneyContext = createContext<JourneyContextType | undefined>(undefined);
@@ -447,6 +449,46 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     return savedJourneyIds.has(journeyId);
   }, [savedJourneyIds]);
 
+  // Create a new custom journey
+  const createCustomJourney = useCallback(() => {
+    const newJourney: Journey = {
+      id: `custom-${Date.now()}`,
+      title: 'New Journey',
+      location: 'Add Location',
+      duration: '0 Days',
+      imageUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80&auto=format&fit=crop',
+      isCustom: true,
+      stops: [],
+      moments: []
+    };
+
+    setPlannerJourneys(prev => [...prev, newJourney]);
+    return newJourney;
+  }, [setPlannerJourneys]);
+
+  // Start a journey (set as live, unset all others, enable navigation)
+  const startJourney = useCallback((journeyId: string) => {
+    // Prevent starting completed journeys
+    const journey = plannerJourneys.find(j => j.id === journeyId);
+    if (journey?.isCompleted) return;
+
+    setPlannerJourneys(prev => prev.map(j => ({
+      ...j,
+      isLive: j.id === journeyId
+    })));
+
+    // Enable navigation mode when starting a journey
+    setIsFollowing(true);
+
+    // Update active journey if it's the one being toggled
+    if (activeJourney) {
+      setActiveJourney({
+        ...activeJourney,
+        isLive: activeJourney.id === journeyId
+      });
+    }
+  }, [setPlannerJourneys, setIsFollowing, activeJourney, plannerJourneys]);
+
   const value = {
     journeys, plannerJourneys, addJourney, persistJourney, cloneToPlanner, removeFromPlanner,
     renameJourney, moveStop, removeStop, updateStopNote,
@@ -454,7 +496,8 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     userLocation, userHeading, isFollowing, setIsFollowing,
     visitedStopIds, markStopAsVisited, toggleStopVisited,
     completeJourney, isJourneyEditable,
-    savedJourneyIds, isAlreadySaved
+    savedJourneyIds, isAlreadySaved,
+    createCustomJourney, startJourney
   };
 
   return (

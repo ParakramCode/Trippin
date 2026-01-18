@@ -16,7 +16,7 @@ const VITE_MAPBOX_TOKEN = "pk.eyJ1IjoicGFha2kyMDA2IiwiYSI6ImNta2NibDA2eDBkZ3czZH
 
 const HomeMap: React.FC = () => {
     const mapRef = useRef<MapRef>(null);
-    const { activeJourney, cloneToPlanner, isFollowing, savedJourneyIds } = useJourneys();
+    const { activeJourney, cloneToPlanner, isFollowing, setIsFollowing, savedJourneyIds } = useJourneys();
     const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -62,6 +62,13 @@ const HomeMap: React.FC = () => {
             navigate('/', { replace: true });
         }
     }, [activeJourney, navigate]);
+
+    // Auto-expand Navigation Drawer if journey is live (and not completed)
+    useEffect(() => {
+        if (activeJourney?.isLive && !activeJourney?.isCompleted && !isFollowing) {
+            setIsFollowing(true);
+        }
+    }, [activeJourney?.isLive, activeJourney?.isCompleted, isFollowing, setIsFollowing]);
 
     if (!activeJourney || !activeJourney.stops) {
         return null; // Render nothing while redirecting

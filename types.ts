@@ -17,6 +17,8 @@ export interface Journey {
   clonedFrom?: string;
   completedAt?: string; // ISO timestamp
   isCompleted?: boolean;
+  isLive?: boolean; // Currently active/live journey
+  isCustom?: boolean; // User-created custom journey
 }
 
 export interface Moment {

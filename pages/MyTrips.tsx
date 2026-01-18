@@ -5,7 +5,16 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MyTrips: React.FC = () => {
-  const { plannerJourneys, removeFromPlanner, activeJourney, setActiveJourney, setIsFollowing, visitedStopIds } = useJourneys();
+  const {
+    plannerJourneys,
+    removeFromPlanner,
+    activeJourney,
+    setActiveJourney,
+    setIsFollowing,
+    visitedStopIds,
+    createCustomJourney,
+    startJourney
+  } = useJourneys();
   const navigate = useNavigate();
   const [filter, setFilter] = React.useState<'planned' | 'completed'>('planned');
 
@@ -51,8 +60,12 @@ const MyTrips: React.FC = () => {
   };
 
   const handleJourneyClick = (journey: Journey) => {
+    // Set as active journey to display on map
     setActiveJourney(journey);
-    setIsFollowing(false); // Default to inspection/plan mode
+
+    // All journeys: navigate to map in inspection mode
+    // (isLive status determines if navigation drawer opens)
+    setIsFollowing(false);
     navigate('/map');
   };
 
@@ -72,6 +85,30 @@ const MyTrips: React.FC = () => {
     if (window.confirm("Are you sure you want to remove this trip?")) {
       removeFromPlanner(id);
     }
+  };
+
+  // Create new custom journey
+  const handleCreateJourney = () => {
+    const newJourney = createCustomJourney();
+    // Navigate to planner to edit the new journey
+    navigate(`/planner/${newJourney.id}`);
+  };
+
+  // Start/Stop journey (toggle live status and navigate to map)
+  const handleStartJourney = (e: React.MouseEvent, journey: Journey) => {
+    e.stopPropagation();
+
+    // Prevent starting completed journeys
+    if (journey.isCompleted) return;
+
+    // Set as active journey
+    setActiveJourney(journey);
+
+    // Start the journey (sets isLive and isFollowing)
+    startJourney(journey.id);
+
+    // Navigate to map for active navigation
+    navigate('/map');
   };
 
   return (
@@ -169,18 +206,30 @@ const MyTrips: React.FC = () => {
 
                         {/* Top Controls */}
                         <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-30 pointer-events-none">
-                          {/* Live/Start Journey Pill - Only show for non-completed journeys */}
+                          {/* Live/Start Journey Button - Only show for non-completed journeys */}
                           {!journey.isCompleted && (
                             <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
-                              onClick={(e) => handleStartNavigation(e, journey)}
-                              className="pointer-events-auto flex items-center gap-2 pl-3 pr-4 py-2 bg-white/40 backdrop-blur-md border border-white/20 rounded-full text-slate-700 font-sans font-medium text-xs shadow-lg hover:bg-white/50 transition-all filter drop-shadow-sm"
+                              onClick={(e) => handleStartJourney(e, journey)}
+                              className={`pointer-events-auto flex items-center gap-2 pl-3 pr-4 py-2 backdrop-blur-md border rounded-full font-sans font-medium text-xs shadow-lg transition-all filter drop-shadow-sm ${journey.isLive
+                                ? 'bg-emerald-500/90 border-emerald-400/30 text-white'
+                                : 'bg-white/40 border-white/20 text-slate-700 hover:bg-white/50'
+                                }`}
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-slate-700">
-                                <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                              </svg>
-                              <span>{isActive ? 'Live Journey' : 'Start Journey'}</span>
+                              {journey.isLive ? (
+                                <>
+                                  <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                                  <span>Live</span>
+                                </>
+                              ) : (
+                                <>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-slate-700">
+                                    <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                                  </svg>
+                                  <span>Start</span>
+                                </>
+                              )}
                             </motion.button>
                           )}
 
@@ -257,6 +306,20 @@ const MyTrips: React.FC = () => {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* FAB: Create New Journey - Only show in Planned tab */}
+      {filter === 'planned' && (
+        <motion.button
+          onClick={handleCreateJourney}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          className="fixed bottom-24 right-6 w-14 h-14 bg-brand-dark text-white rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center z-50 group"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
+            <path fillRule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clipRule="evenodd" />
+          </svg>
+        </motion.button>
+      )}
     </div>
   );
 };
