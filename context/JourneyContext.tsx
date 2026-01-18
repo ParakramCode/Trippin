@@ -1029,8 +1029,44 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [setPlannerJourneys, activeJourney]);
 
-  // Move a stop up or down in a journey
+  /**
+   * Move a stop up or down in a journey (Phase 2.4: Fork-only mutation)
+   * 
+   * DEFENSIVE FORK VALIDATION:
+   * Mutations are only allowed on JourneyFork instances (user-owned).
+   * This guard prevents accidental mutation of templates or non-fork journeys.
+   * 
+   * Guard checks:
+   * 1. Journey exists in plannerJourneys
+   * 2. Journey is actually a fork (has sourceJourneyId and clonedAt)
+   * 
+   * This is a defensive layer - UI should already prevent calls on templates.
+   */
   const moveStop = useCallback((journeyId: string, stopIndex: number, direction: 'up' | 'down') => {
+    // PHASE 2.4: Defensive fork validation
+    const targetJourney = plannerJourneys.find(j => j.id === journeyId);
+
+    if (!targetJourney) {
+      console.warn(
+        '[moveStop] Journey not found in plannerJourneys.',
+        '\nJourney ID:', journeyId,
+        '\nOperation blocked: Cannot move stops on non-existent journey.'
+      );
+      return;
+    }
+
+    if (!isJourneyFork(targetJourney as any)) {
+      console.warn(
+        '[moveStop] Journey is not a fork. Mutations only allowed on user-owned forks.',
+        '\nJourney ID:', journeyId,
+        '\nJourney Title:', targetJourney.title,
+        '\nOperation blocked: Templates are immutable.',
+        '\nAction: Fork this journey first to make changes.'
+      );
+      return;
+    }
+
+    // Guards passed - perform mutation
     setPlannerJourneys(prev => prev.map(journey => {
       if (journey.id !== journeyId || !journey.stops) return journey;
 
@@ -1055,10 +1091,48 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
         setActiveJourney({ ...activeJourney, stops: newStops });
       }
     }
-  }, [setPlannerJourneys, activeJourney]);
+  }, [setPlannerJourneys, activeJourney, plannerJourneys]);
 
-  // Remove a specific stop from a journey
+  /**
+   * Remove a stop from a journey (Phase 2.4: Fork-only mutation)
+   * 
+   * DEFENSIVE FORK VALIDATION:
+   * Mutations are only allowed on JourneyFork instances (user-owned).
+   * This guard prevents accidental mutation of templates or non-fork journeys.
+   * 
+   * Guard checks:
+   * 1. Journey exists in plannerJourneys
+   * 2. Journey is actually a fork (has sourceJourneyId and clonedAt)
+   * 
+   * This is a defensive layer - UI should already prevent calls on templates.
+   */
   const removeStop = useCallback((journeyId: string, stopId: string) => {
+    // PHASE 2.4: Defensive fork validation
+    const targetJourney = plannerJourneys.find(j => j.id === journeyId);
+
+    if (!targetJourney) {
+      console.warn(
+        '[removeStop] Journey not found in plannerJourneys.',
+        '\nJourney ID:', journeyId,
+        '\nStop ID:', stopId,
+        '\nOperation blocked: Cannot remove stop from non-existent journey.'
+      );
+      return;
+    }
+
+    if (!isJourneyFork(targetJourney as any)) {
+      console.warn(
+        '[removeStop] Journey is not a fork. Mutations only allowed on user-owned forks.',
+        '\nJourney ID:', journeyId,
+        '\nJourney Title:', targetJourney.title,
+        '\nStop ID:', stopId,
+        '\nOperation blocked: Templates are immutable.',
+        '\nAction: Fork this journey first to make changes.'
+      );
+      return;
+    }
+
+    // Guards passed - perform mutation
     setPlannerJourneys(prev => prev.map(journey => {
       if (journey.id !== journeyId || !journey.stops) return journey;
       return { ...journey, stops: journey.stops.filter(s => s.id !== stopId) };
@@ -1071,7 +1145,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
         stops: activeJourney.stops.filter(s => s.id !== stopId)
       });
     }
-  }, [setPlannerJourneys, activeJourney]);
+  }, [setPlannerJourneys, activeJourney, plannerJourneys]);
 
   // Update a note on a specific stop
   // TODO: PARTIAL SAFETY - Only updates planner journeys, but activeJourney sync is risky
