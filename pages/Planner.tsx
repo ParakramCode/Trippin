@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useJourneys } from '../context/JourneyContext';
 import { motion } from 'framer-motion';
+import { getJourneyStatus } from '../types';
 
 const Planner: React.FC = () => {
   const { id } = useParams();
@@ -32,7 +33,7 @@ const Planner: React.FC = () => {
     );
   }
 
-  const isEditable = !journey.isCompleted; // Only editable if not completed
+  const isEditable = getJourneyStatus(journey) !== "COMPLETED"; // Only editable if not completed
 
   const handleTitleSave = () => {
     if (editedTitle.trim() && editedTitle !== journey.title) {

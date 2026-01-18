@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Stop } from '../types';
+import { Stop, getJourneyStatus } from '../types';
 import { useJourneys } from '../context/JourneyContext';
 import { getDistanceFromLatLonInKm, checkProximity } from '../utils/geometry';
 
@@ -12,14 +12,39 @@ interface NavigationDrawerProps {
 }
 
 const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStopId, onSelect }) => {
-    const { userLocation, setIsFollowing, visitedStopIds, toggleStopVisited, activeJourney, completeJourney } = useJourneys();
+    /**
+     * COMPONENT MIGRATION: Per-Journey Visited State
+     * 
+     * BEFORE (Global state):
+     * - visitedStopIds: string[] - Global array affecting all journeys
+     * - toggleStopVisited(stopId) - Mutates global state
+     * 
+     * AFTER (Journey-scoped state):
+     * - toggleStopVisitedInJourney(journeyId, stopId) - Scoped to journey
+     * - stop.visited - Direct property access
+     * 
+     * Benefits:
+     * - Independent progress per fork
+     * - No cross-journey pollution
+     * - Aligns with JourneyFork domain model
+     */
+    const {
+        userLocation,
+        setIsFollowing,
+        activeJourney,
+        completeJourney,
+        // NEW: Journey-scoped visited state
+        toggleStopVisitedInJourney
+    } = useJourneys();
+
     const [isOpen, setIsOpen] = useState(true);
     const [showCompletionModal, setShowCompletionModal] = useState(false);
     const [lastToggleTime, setLastToggleTime] = useState(0);
 
-    // Calculate stops remaining
+    // Calculate stops remaining using journey-scoped visited state
     const totalStops = stops.length;
-    const visitedCount = stops.filter(s => visitedStopIds.includes(s.id)).length;
+    // MIGRATED: Use stop.visited (per-journey) instead of global visitedStopIds
+    const visitedCount = stops.filter(s => s.visited === true).length;
     const stopsRemaining = totalStops - visitedCount;
 
     // Determine the closest stop to highlight
@@ -48,11 +73,15 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
         if (now - lastToggleTime < 300) return;
         setLastToggleTime(now);
 
-        // Toggle visited state
-        toggleStopVisited(stop.id);
+        // MIGRATED: Use journey-scoped toggle instead of global
+        // Only toggle if we have an activeJourney (not in inspection mode)
+        if (!activeJourney) return;
 
-        // Check if this completes the journey
-        const willBeVisited = !visitedStopIds.includes(stop.id);
+        toggleStopVisitedInJourney(activeJourney.id, stop.id);
+
+        // Check if this completes the journey  
+        // Use stop.visited (will be toggled) to determine new state
+        const willBeVisited = !stop.visited;
         if (willBeVisited) {
             const newVisitedCount = visitedCount + 1;
             if (newVisitedCount === totalStops) {
@@ -91,8 +120,18 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
                     <div className="w-1 h-16 bg-slate-400/50 rounded-full group-hover:bg-slate-500/70 transition-colors backdrop-blur-md shadow-sm" />
                 </div>
 
-                {/* Header with Stops Remaining Counter */}
-                <div className="p-6 border-b border-slate-100/50 flex flex-col gap-1 select-none">
+                {/* Header with Recording Status */}
+                <div className="p-6 border-b border-slate-100/50 flex flex-col gap-2 select-none">
+                    {/* Recording indicator for forked/cloned journeys */}
+                    {activeJourney?.sourceJourneyId && getJourneyStatus(activeJourney) === "LIVE" && (
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                            <span className="text-xs font-sans font-medium text-slate-500">
+                                Following {activeJourney.title} • Recording your journey
+                            </span>
+                        </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold tracking-widest uppercase text-indigo-500">Live Navigation</span>
                         {stopsRemaining > 0 && (
@@ -125,7 +164,8 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
                     {stops.map((stop, index) => {
                         const isSelected = selectedStopId === stop.id;
                         const isClosest = closestStopIndex === index;
-                        const isVisited = visitedStopIds.includes(stop.id);
+                        // MIGRATED: Use stop.visited (per-journey) instead of global visitedStopIds
+                        const isVisited = stop.visited === true;
 
                         // Calculate distance if user location is available
                         let distanceText = '-- km';

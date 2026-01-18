@@ -19,7 +19,28 @@ interface JourneyMapProps {
 }
 
 const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], mapboxToken, selectedStopId, onStopSelect }, ref) => {
-    const { userLocation, userHeading, isFollowing, setIsFollowing, visitedStopIds, markStopAsVisited, activeJourney } = useJourneys();
+    /**
+     * COMPONENT MIGRATION: Per-Journey Visited State
+     * 
+     * BEFORE (Global state):
+     * - visitedStopIds: string[] - Global array
+     * - markStopAsVisited(stopId) - Mutates global
+     * 
+     * AFTER (Journey-scoped):
+     * - stop.visited - Direct property
+     * - markStopVisitedInJourney(journeyId, stopId) - Scoped
+     * 
+     * Important: Only mark visited if activeJourney exists (not inspection mode)
+     */
+    const {
+        userLocation,
+        userHeading,
+        isFollowing,
+        setIsFollowing,
+        activeJourney,
+        // NEW: Journey-scoped visited state
+        markStopVisitedInJourney
+    } = useJourneys();
     const [routeGeoJSON, setRouteGeoJSON] = React.useState<FeatureCollection<LineString> | null>(null);
     const [isLoadingRoute, setIsLoadingRoute] = React.useState(false);
 
@@ -161,8 +182,10 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                     lastStopIndexRef.current = closestIndex;
 
                     // "Arrival" Experience: Only for unvisited stops
-                    if (!visitedStopIds.includes(stop.id)) {
-                        markStopAsVisited(stop.id);
+                    // MIGRATED: Use stop.visited (per-journey) instead of global visitedStopIds
+                    if (!stop.visited && activeJourney) {
+                        // Only mark visited if we have an activeJourney (not inspection mode)
+                        markStopVisitedInJourney(activeJourney.id, stop.id);
 
                         // Haptic Feedback
                         if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -177,7 +200,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
             }
         }
 
-    }, [userLocation, isFollowing, recenterOnUser, stops, onStopSelect, visitedStopIds, markStopAsVisited]);
+    }, [userLocation, isFollowing, recenterOnUser, stops, onStopSelect, activeJourney, markStopVisitedInJourney]);
 
     // Fetch Directions (Existing)
     React.useEffect(() => {

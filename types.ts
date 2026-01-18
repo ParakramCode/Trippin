@@ -4,6 +4,8 @@ export interface Author {
   bio?: string;
 }
 
+export type JourneyStatus = "DISCOVERED" | "PLANNED" | "LIVE" | "COMPLETED";
+
 export interface Journey {
   id: string;
   title: string;
@@ -14,11 +16,11 @@ export interface Journey {
   stops?: Stop[];
   moments?: Moment[];
   clonedAt?: number;
-  clonedFrom?: string;
+  sourceJourneyId?: string;
   completedAt?: string; // ISO timestamp
   isCompleted?: boolean;
-  isLive?: boolean; // Currently active/live journey
   isCustom?: boolean; // User-created custom journey
+  status?: JourneyStatus; // Derived from flags above
 }
 
 export interface Moment {
@@ -40,4 +42,21 @@ export interface Stop {
   note?: string; // User-added note for this stop
   gallery?: string[]; // Additional gallery images for destination overlay
   activities?: string[]; // List of activities available at this stop
+
+  // NEW: Per-journey visited state
+  // When present in a journey fork, tracks if user has visited this stop
+  // Allows independent progress tracking for each fork of the same route
+  visited?: boolean;
+}
+
+// Helper function to derive journey status from existing flags
+export function getJourneyStatus(journey: Journey): JourneyStatus {
+  // If status is already set, return it
+  if (journey.status) return journey.status;
+
+  // Otherwise derive from flags
+  // Priority order: COMPLETED > LIVE > PLANNED > DISCOVERED
+  if (journey.isCompleted) return "COMPLETED";
+  if (journey.sourceJourneyId || journey.clonedAt) return "PLANNED";
+  return "DISCOVERED";
 }

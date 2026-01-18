@@ -6,7 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 const CATEGORIES = ["All", "Coastal", "City", "Mountain", "Forest", "Desert"];
 
 const Discover: React.FC = () => {
-  const { journeys, loadJourney, plannerJourneys, setIsFollowing } = useJourneys();
+  // STORAGE SPLIT: Use templateJourneys (read-only) instead of mixed journeys array
+  // @deprecated Using loadJourney which mixes discovered and forked journeys
+  // MIGRATE TO: Preview-only flow, then fork, then navigate to forked journey
+  const { templateJourneys, loadJourney, plannerJourneys, setIsFollowing } = useJourneys();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
@@ -16,12 +19,21 @@ const Discover: React.FC = () => {
   }, [setIsFollowing]);
 
   const handleJourneyClick = (journeyId: string) => {
+    // TODO: UNSAFE MUTATION RISK - Loading discovered journey as activeJourney
+    // ISSUE: loadJourney sets a discovered journey (JourneySource) as activeJourney.
+    // Once set, any user interactions (adding notes, marking stops visited, reordering)
+    // will directly mutate the discovered journey template in memory.
+    // DOMAIN MODEL: Should NOT allow viewing discovered journeys without forking first.
+    // Users should only be able to:
+    // 1. Preview discovered journeys (read-only, modal/overlay)
+    // 2. Fork the journey to create a JourneyFork instance
+    // 3. THEN navigate to the map with the fork as activeJourney
     loadJourney(journeyId);
     navigate('/map');
   };
 
   const filteredJourneys = useMemo(() => {
-    return journeys.filter(journey => {
+    return templateJourneys.filter(journey => {
       const query = searchQuery.toLowerCase();
       const matchesSearch = journey.title.toLowerCase().includes(query) ||
         journey.location.toLowerCase().includes(query);
@@ -42,7 +54,7 @@ const Discover: React.FC = () => {
 
       return matchesSearch && matchesCategory;
     });
-  }, [journeys, searchQuery, activeCategory]);
+  }, [templateJourneys, searchQuery, activeCategory]);
 
   return (
     <div className="min-h-screen bg-brand-beige pb-32">
@@ -100,8 +112,8 @@ const Discover: React.FC = () => {
           {filteredJourneys.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {filteredJourneys.map((journey) => {
-                const isPlanned = plannerJourneys.some(p => p.clonedFrom === journey.id || p.id === journey.id);
-                const plannedJourney = plannerJourneys.find(p => p.clonedFrom === journey.id || p.id === journey.id);
+                const isPlanned = plannerJourneys.some(p => p.sourceJourneyId === journey.id || p.id === journey.id);
+                const plannedJourney = plannerJourneys.find(p => p.sourceJourneyId === journey.id || p.id === journey.id);
                 const isCompleted = plannedJourney?.isCompleted === true;
 
                 // Mock data helpers

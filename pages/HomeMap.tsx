@@ -4,7 +4,7 @@ import { MapRef } from 'react-map-gl/mapbox';
 import JourneyMap from '../components/JourneyMap';
 import Filmstrip from '../components/Filmstrip';
 import DestinationDetail from '../components/DestinationDetail';
-import { Stop } from '../types';
+import { Stop, getJourneyStatus } from '../types';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import mapboxgl from 'mapbox-gl'; // Import mapboxgl for fitBounds
 import { useJourneys } from '../context/JourneyContext';
@@ -16,7 +16,34 @@ const VITE_MAPBOX_TOKEN = "pk.eyJ1IjoicGFha2kyMDA2IiwiYSI6ImNta2NibDA2eDBkZ3czZH
 
 const HomeMap: React.FC = () => {
     const mapRef = useRef<MapRef>(null);
-    const { activeJourney, cloneToPlanner, isFollowing, setIsFollowing, savedJourneyIds } = useJourneys();
+
+    /**
+     * INSPECTION MODE INTEGRATION
+     * 
+     * Map prefers inspectionJourney (read-only) over activeJourney (mutable).
+     * 
+     * Journey selection hierarchy:
+     * 1. inspectionJourney (if present) - Discovered journeys, read-only
+     * 2. activeJourney (if present) - Forked journeys, can be mutable
+     * 
+     * Why:
+     * - Discovered journeys must be viewable without becoming active
+     * - Only forked journeys should be subject to mutations
+     * - This prevents accidental corruption of journey templates
+     * 
+     * Behavior:
+     * - Mutations (notes, visited state) only apply to activeJourney
+     * - inspectionJourney is display-only, no state changes
+     * - "Add to My Journeys" creates fork from inspection journey
+     */
+    const { inspectionJourney, activeJourney, forkJourney, isFollowing, setIsFollowing, savedJourneyIds } = useJourneys();
+
+    // Prefer inspection mode, fall back to active
+    const currentJourney = inspectionJourney || activeJourney;
+
+    // Determine if we're in read-only mode (inspection)
+    const isReadOnlyMode = !!inspectionJourney;
+
     const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -24,22 +51,22 @@ const HomeMap: React.FC = () => {
 
     // Reset selected stop when journey changes
     useEffect(() => {
-        if (activeJourney?.stops && activeJourney.stops.length > 0) {
-            setSelectedStopId(activeJourney.stops[0].id);
+        if (currentJourney?.stops && currentJourney.stops.length > 0) {
+            setSelectedStopId(currentJourney.stops[0].id);
             // Fit bounds to the whole journey initially
             if (mapRef.current) {
                 const bounds = new mapboxgl.LngLatBounds();
-                activeJourney.stops.forEach(stop => {
+                currentJourney.stops.forEach(stop => {
                     bounds.extend(stop.coordinates as [number, number]);
                 });
                 mapRef.current.fitBounds(bounds, { padding: 50, duration: 2000 });
             }
         }
-    }, [activeJourney]);
+    }, [currentJourney]);
 
     const handleAddToJourneys = () => {
-        if (!activeJourney) return;
-        cloneToPlanner(activeJourney);
+        if (!currentJourney) return;
+        forkJourney(currentJourney);
         setToastMessage("Added to My Journeys!");
         setTimeout(() => setToastMessage(null), 2000);
     };
@@ -56,21 +83,22 @@ const HomeMap: React.FC = () => {
         // Detail overlay opens, camera position unchanged
     };
 
-    // Redirect if no active journey
+    // Redirect if no journey to display
     useEffect(() => {
-        if (!activeJourney || !activeJourney.stops) {
+        if (!currentJourney || !currentJourney.stops) {
             navigate('/', { replace: true });
         }
-    }, [activeJourney, navigate]);
+    }, [currentJourney, navigate]);
 
     // Auto-expand Navigation Drawer if journey is live (and not completed)
+    // NOTE: Only applies to activeJourney, not inspection mode
     useEffect(() => {
-        if (activeJourney?.isLive && !activeJourney?.isCompleted && !isFollowing) {
+        if (!isReadOnlyMode && activeJourney && getJourneyStatus(activeJourney) === "LIVE" && !activeJourney?.isCompleted && !isFollowing) {
             setIsFollowing(true);
         }
-    }, [activeJourney?.isLive, activeJourney?.isCompleted, isFollowing, setIsFollowing]);
+    }, [isReadOnlyMode, activeJourney, isFollowing, setIsFollowing]);
 
-    if (!activeJourney || !activeJourney.stops) {
+    if (!currentJourney || !currentJourney.stops) {
         return null; // Render nothing while redirecting
     }
 
@@ -79,26 +107,26 @@ const HomeMap: React.FC = () => {
             {/* Map component */}
             <JourneyMap
                 ref={mapRef}
-                stops={activeJourney.stops}
-                moments={activeJourney.moments}
+                stops={currentJourney.stops}
+                moments={currentJourney.moments}
                 mapboxToken={VITE_MAPBOX_TOKEN}
                 selectedStopId={selectedStopId}
                 onStopSelect={handleStopFocus}
             />
 
             {/* Top Right Controls: Author & Add Button */}
-            {!isFollowing && activeJourney && (
-                <div key={activeJourney.id} className="absolute top-6 right-6 z-[100] flex flex-col items-end gap-3">
+            {!isFollowing && currentJourney && (
+                <div key={currentJourney.id} className="absolute top-6 right-6 z-[100] flex flex-col items-end gap-3">
                     {/* Author Tag */}
-                    {activeJourney.author && (
+                    {currentJourney.author && (
                         <div className="flex items-center gap-2 pl-1 pr-3 py-1 bg-white/20 backdrop-blur-2xl border border-white/20 rounded-full shadow-sm">
-                            <img src={activeJourney.author.avatar} alt={activeJourney.author.name} className="w-5 h-5 rounded-full object-cover border border-white/30" />
-                            <span className="text-[10px] font-sans font-bold text-slate-700">Curated by @{activeJourney.author.name}</span>
+                            <img src={currentJourney.author.avatar} alt={currentJourney.author.name} className="w-5 h-5 rounded-full object-cover border border-white/30" />
+                            <span className="text-[10px] font-sans font-bold text-slate-700">Curated by @{currentJourney.author.name}</span>
                         </div>
                     )}
 
                     {/* Add to My Journeys Button - Only show if not already saved */}
-                    {activeJourney && !savedJourneyIds.has(activeJourney.id) && (
+                    {currentJourney && !savedJourneyIds.has(currentJourney.id) && (
                         <button
                             onClick={handleAddToJourneys}
                             className={`
@@ -130,7 +158,7 @@ const HomeMap: React.FC = () => {
                 {isFollowing ? (
                     <NavigationDrawer
                         key="nav-drawer"
-                        stops={activeJourney.stops}
+                        stops={currentJourney.stops}
                         selectedStopId={selectedStopId}
                         onSelect={handleStopFocus}
                     />
@@ -145,7 +173,7 @@ const HomeMap: React.FC = () => {
                     >
                         <div className="pointer-events-auto">
                             <Filmstrip
-                                stops={activeJourney.stops}
+                                stops={currentJourney.stops}
                                 selectedStopId={selectedStopId}
                                 onSelect={handleStopFocus}
                                 onCardClick={handleStopClick}

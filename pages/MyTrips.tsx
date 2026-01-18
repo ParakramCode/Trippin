@@ -1,17 +1,29 @@
 import React from 'react';
 import { useJourneys } from '../context/JourneyContext';
-import { Journey } from '../types';
+import { Journey, getJourneyStatus } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MyTrips: React.FC = () => {
+  /**
+   * COMPONENT MIGRATION: Per-Journey Visited State
+   * 
+   * BEFORE (Global state):
+   * - visitedStopIds: string[] - Global, affects all journeys
+   * - Progress computed by checking if stop ID exists in global array
+   * 
+   * AFTER (Journey-scoped):
+   * - journey.stops[].visited - Per-journey property
+   * - Progress computed from individual journey's visited state
+   * 
+   * Benefit: Each fork has independent progress tracking
+   */
   const {
     plannerJourneys,
     removeFromPlanner,
     activeJourney,
     setActiveJourney,
     setIsFollowing,
-    visitedStopIds,
     createCustomJourney,
     startJourney
   } = useJourneys();
@@ -47,7 +59,7 @@ const MyTrips: React.FC = () => {
 
       return 0;
     });
-  }, [plannerJourneys, activeJourney, filter, visitedStopIds]);
+  }, [plannerJourneys, activeJourney, filter]);
 
   // Helper function to format completion date
   const formatCompletionDate = (isoDate: string) => {
@@ -180,7 +192,8 @@ const MyTrips: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {filteredJourneys.map(journey => {
-                  const visitedCount = journey.stops?.filter(s => visitedStopIds.includes(s.id)).length || 0;
+                  // MIGRATED: Use journey.stops[].visited (per-journey) instead of global visitedStopIds
+                  const visitedCount = journey.stops?.filter(s => s.visited === true).length || 0;
                   const totalStops = journey.stops?.length || 0;
                   const progress = totalStops > 0 ? (visitedCount / totalStops) * 100 : 0;
                   const isActive = activeJourney?.id === journey.id;
@@ -212,12 +225,12 @@ const MyTrips: React.FC = () => {
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               onClick={(e) => handleStartJourney(e, journey)}
-                              className={`pointer-events-auto flex items-center gap-2 pl-3 pr-4 py-2 backdrop-blur-md border rounded-full font-sans font-medium text-xs shadow-lg transition-all filter drop-shadow-sm ${journey.isLive
+                              className={`pointer-events-auto flex items-center gap-2 pl-3 pr-4 py-2 backdrop-blur-md border rounded-full font-sans font-medium text-xs shadow-lg transition-all filter drop-shadow-sm ${getJourneyStatus(journey) === "LIVE"
                                 ? 'bg-emerald-500/90 border-emerald-400/30 text-white'
                                 : 'bg-white/40 border-white/20 text-slate-700 hover:bg-white/50'
                                 }`}
                             >
-                              {journey.isLive ? (
+                              {getJourneyStatus(journey) === "LIVE" ? (
                                 <>
                                   <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
                                   <span>Live</span>
