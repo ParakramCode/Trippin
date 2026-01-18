@@ -1,4 +1,4 @@
-# Phase 4: Component Migration to Per-Journey Visited State
+# Phase 0.4: Component Migration to Per-Journey Visited State
 
 **Date:** 2026-01-18  
 **Status:** ✅ **COMPLETE** - All components migrated
