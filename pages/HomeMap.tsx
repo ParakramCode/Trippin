@@ -36,13 +36,20 @@ const HomeMap: React.FC = () => {
      * - inspectionJourney is display-only, no state changes
      * - "Add to My Journeys" creates fork from inspection journey
      */
-    const { inspectionJourney, activeJourney, forkJourney, isFollowing, setIsFollowing, savedJourneyIds } = useJourneys();
 
-    // Prefer inspection mode, fall back to active
-    const currentJourney = inspectionJourney || activeJourney;
+    const {
+        activeJourney,
+        forkJourney,
+        journeyMode,
+        savedJourneyIds,
+        startJourney,
+        // Phase 3.3: Use context-provided currentJourney and isReadOnlyJourney
+        currentJourney,
+        isReadOnlyJourney
+    } = useJourneys();
 
-    // Determine if we're in read-only mode (inspection)
-    const isReadOnlyMode = !!inspectionJourney;
+    // Removed local currentJourney fallback - using context version
+    // Removed local isReadOnlyMode - using context version
 
     const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
@@ -93,10 +100,12 @@ const HomeMap: React.FC = () => {
     // Auto-expand Navigation Drawer if journey is live (and not completed)
     // NOTE: Only applies to activeJourney, not inspection mode
     useEffect(() => {
-        if (!isReadOnlyMode && activeJourney && getJourneyStatus(activeJourney) === "LIVE" && !activeJourney?.isCompleted && !isFollowing) {
-            setIsFollowing(true);
+        // Phase 3.2: Auto-start navigation if journey is LIVE but not in navigation mode yet
+        if (!isReadOnlyJourney && activeJourney && getJourneyStatus(activeJourney) === "LIVE" && activeJourney?.status !== 'COMPLETED' && journeyMode !== 'NAVIGATION') {
+            // Journey is marked as LIVE, ensure it's in navigation mode
+            startJourney(activeJourney);
         }
-    }, [isReadOnlyMode, activeJourney, isFollowing, setIsFollowing]);
+    }, [isReadOnlyJourney, activeJourney, journeyMode, startJourney]);
 
     if (!currentJourney || !currentJourney.stops) {
         return null; // Render nothing while redirecting
@@ -115,7 +124,7 @@ const HomeMap: React.FC = () => {
             />
 
             {/* Top Right Controls: Author & Add Button */}
-            {!isFollowing && currentJourney && (
+            {journeyMode !== 'NAVIGATION' && currentJourney && (
                 <div key={currentJourney.id} className="absolute top-6 right-6 z-[100] flex flex-col items-end gap-3">
                     {/* Author Tag */}
                     {currentJourney.author && (
@@ -155,7 +164,7 @@ const HomeMap: React.FC = () => {
             )}
 
             <AnimatePresence mode="wait" initial={false}>
-                {isFollowing ? (
+                {journeyMode === 'NAVIGATION' ? (
                     <NavigationDrawer
                         key="nav-drawer"
                         stops={currentJourney.stops}

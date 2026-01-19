@@ -3,7 +3,7 @@ import React from 'react';
 import { Stop } from '../types';
 
 interface FilmstripProps {
-    stops: Stop[];
+    stops: readonly Stop[];
     selectedStopId: string | null;
     onSelect: (stop: Stop) => void; // Camera focus during scroll
     onCardClick?: (stop: Stop) => void; // Explicit click for detail overlay

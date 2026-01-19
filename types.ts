@@ -5,6 +5,9 @@ export interface Author {
 }
 
 export type JourneyStatus = "DISCOVERED" | "PLANNED" | "LIVE" | "COMPLETED";
+// NOTE:
+// Completion is represented exclusively by JourneyFork.status === 'COMPLETED'.
+// No boolean completion flags are permitted.
 
 export interface Journey {
   id: string;
@@ -18,7 +21,6 @@ export interface Journey {
   clonedAt?: number;
   sourceJourneyId?: string;
   completedAt?: string; // ISO timestamp
-  isCompleted?: boolean;
   isCustom?: boolean; // User-created custom journey
   status?: JourneyStatus; // Derived from flags above
 }
@@ -56,7 +58,6 @@ export function getJourneyStatus(journey: Journey): JourneyStatus {
 
   // Otherwise derive from flags
   // Priority order: COMPLETED > LIVE > PLANNED > DISCOVERED
-  if (journey.isCompleted) return "COMPLETED";
   if (journey.sourceJourneyId || journey.clonedAt) return "PLANNED";
   return "DISCOVERED";
 }

@@ -7,27 +7,18 @@ const CATEGORIES = ["All", "Coastal", "City", "Mountain", "Forest", "Desert"];
 
 const Discover: React.FC = () => {
   // STORAGE SPLIT: Use templateJourneys (read-only) instead of mixed journeys array
-  // @deprecated Using loadJourney which mixes discovered and forked journeys
-  // MIGRATE TO: Preview-only flow, then fork, then navigate to forked journey
-  const { templateJourneys, loadJourney, plannerJourneys, setIsFollowing } = useJourneys();
+
+  const { templateJourneys, loadJourney, plannerJourneys } = useJourneys();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
 
-  React.useEffect(() => {
-    setIsFollowing(false);
-  }, [setIsFollowing]);
+  // Phase 3.2: Removed setIsFollowing(false) effect - not needed
+  // loadJourney automatically routes templates to inspectionJourney (read-only)
+
 
   const handleJourneyClick = (journeyId: string) => {
-    // TODO: UNSAFE MUTATION RISK - Loading discovered journey as activeJourney
-    // ISSUE: loadJourney sets a discovered journey (JourneySource) as activeJourney.
-    // Once set, any user interactions (adding notes, marking stops visited, reordering)
-    // will directly mutate the discovered journey template in memory.
-    // DOMAIN MODEL: Should NOT allow viewing discovered journeys without forking first.
-    // Users should only be able to:
-    // 1. Preview discovered journeys (read-only, modal/overlay)
-    // 2. Fork the journey to create a JourneyFork instance
-    // 3. THEN navigate to the map with the fork as activeJourney
+
     loadJourney(journeyId);
     navigate('/map');
   };
@@ -114,7 +105,7 @@ const Discover: React.FC = () => {
               {filteredJourneys.map((journey) => {
                 const isPlanned = plannerJourneys.some(p => p.sourceJourneyId === journey.id || p.id === journey.id);
                 const plannedJourney = plannerJourneys.find(p => p.sourceJourneyId === journey.id || p.id === journey.id);
-                const isCompleted = plannedJourney?.isCompleted === true;
+                const isCompleted = plannedJourney?.status === 'COMPLETED';
 
                 // Mock data helpers
                 const stopsCount = journey.stops?.length || 0;

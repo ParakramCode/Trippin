@@ -23,7 +23,8 @@ const MyTrips: React.FC = () => {
     removeFromPlanner,
     activeJourney,
     setActiveJourney,
-    setIsFollowing,
+    loadJourney,  // Phase 3.1: Using loadJourney instead of direct setActiveJourney
+    // Phase 3.2: Removed setIsFollowing - using journeyMode instead
     createCustomJourney,
     startJourney
   } = useJourneys();
@@ -36,13 +37,13 @@ const MyTrips: React.FC = () => {
 
     // 1. Filter
     const filtered = plannerJourneys.filter(j => {
-      const isCompleted = j.isCompleted === true;
-      const isActive = activeJourney?.id === j.id;
+      const isCompleted = j.status === 'COMPLETED';
+
 
       if (filter === 'completed') {
-        return isCompleted && !isActive; // Active always stays in Planned
+        return isCompleted;
       } else {
-        return !isCompleted || isActive;
+        return !isCompleted;
       }
     });
 
@@ -72,12 +73,10 @@ const MyTrips: React.FC = () => {
   };
 
   const handleJourneyClick = (journey: Journey) => {
-    // Set as active journey to display on map
-    setActiveJourney(journey);
+    // Phase 3.1: Use loadJourney for proper routing (type-safe)
+    loadJourney(journey.id);
 
-    // All journeys: navigate to map in inspection mode
-    // (isLive status determines if navigation drawer opens)
-    setIsFollowing(false);
+    // Phase 3.2: loadJourney handles everything, no manual flag setting needed
     navigate('/map');
   };
 
@@ -86,8 +85,10 @@ const MyTrips: React.FC = () => {
 
     // Animate first (simulated by delay)
     setTimeout(() => {
-      setActiveJourney(journey);
-      setIsFollowing(true); // Active Navigation Mode
+      // Phase 3.1: Use loadJourney for type-safe routing
+      loadJourney(journey.id);
+      // Phase 3.2: startJourney sets status='LIVE', journeyMode becomes 'NAVIGATION'
+      // No manual setIsFollowing needed
       navigate('/map');
     }, 400); // Wait for spring animation
   };
@@ -95,7 +96,10 @@ const MyTrips: React.FC = () => {
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (window.confirm("Are you sure you want to remove this trip?")) {
-      removeFromPlanner(id);
+      const journeyToDelete = plannerJourneys.find(j => j.id === id);
+      if (journeyToDelete) {
+        removeFromPlanner(journeyToDelete as any);
+      }
     }
   };
 
@@ -111,13 +115,13 @@ const MyTrips: React.FC = () => {
     e.stopPropagation();
 
     // Prevent starting completed journeys
-    if (journey.isCompleted) return;
+    if (journey.status === 'COMPLETED') return;
 
-    // Set as active journey
-    setActiveJourney(journey);
+    // Phase 3.1: Use loadJourney for type-safe routing
+    loadJourney(journey.id);
 
     // Start the journey (sets isLive and isFollowing)
-    startJourney(journey.id);
+    startJourney(journey as any);
 
     // Navigate to map for active navigation
     navigate('/map');
@@ -220,7 +224,7 @@ const MyTrips: React.FC = () => {
                         {/* Top Controls */}
                         <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-30 pointer-events-none">
                           {/* Live/Start Journey Button - Only show for non-completed journeys */}
-                          {!journey.isCompleted && (
+                          {journey.status !== "COMPLETED" && (
                             <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
@@ -247,12 +251,12 @@ const MyTrips: React.FC = () => {
                           )}
 
                           {/* Spacer for completed journeys to push buttons to right */}
-                          {journey.isCompleted && <div />}
+                          {journey.status === "COMPLETED" && <div />}
 
                           {/* Action Buttons */}
                           <div className="flex gap-2">
                             {/* Edit Details Button - Only show for non-completed journeys */}
-                            {!journey.isCompleted && (
+                            {journey.status !== "COMPLETED" && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -286,14 +290,14 @@ const MyTrips: React.FC = () => {
                           <p className="font-sans text-xs font-medium tracking-wide uppercase opacity-80">{journey.location}</p>
 
                           {/* Completion Date - Only show for completed journeys */}
-                          {journey.isCompleted && journey.completedAt && (
+                          {journey.status === "COMPLETED" && journey.completedAt && (
                             <p className="font-sans text-xs text-slate-300 mt-1">
                               Finished {formatCompletionDate(journey.completedAt)}
                             </p>
                           )}
 
                           {/* Progress Indicator */}
-                          {visitedCount > 0 && !journey.isCompleted && (
+                          {visitedCount > 0 && journey.status !== "COMPLETED" && (
                             <div className="mt-4">
                               <div className="flex justify-between items-center mb-1.5">
                                 <span className="text-[10px] font-bold text-white/90 uppercase tracking-widest">{visitedCount} of {totalStops} Stops</span>

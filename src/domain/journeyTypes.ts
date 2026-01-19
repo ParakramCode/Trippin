@@ -216,10 +216,8 @@ export interface JourneyFork {
     clonedAt: number;
 
     /** Timestamp when journey was completed (if applicable) */
+    /** Timestamp when journey was completed (if applicable) */
     completedAt?: string;
-
-    /** Flag indicating if journey is completed */
-    isCompleted?: boolean;
 
     /** Flag indicating if this is a custom user-created journey (not forked) */
     isCustom?: boolean;
@@ -290,7 +288,7 @@ export type AnyStop = StopTemplate | UserStop;
  */
 export function canBeLive(fork: JourneyFork): boolean {
     // Cannot set completed journeys to LIVE
-    if (fork.isCompleted) {
+    if (fork.status === 'COMPLETED') {
         return false;
     }
 

@@ -4,13 +4,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useJourneys } from '../context/JourneyContext';
 import { motion } from 'framer-motion';
 import { getJourneyStatus } from '../types';
+import { JourneyFork } from '../src/domain/journeyFork';
 
 const Planner: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { plannerJourneys, renameJourney, moveStop, removeStop, updateStopNote } = useJourneys();
 
-  const journey = plannerJourneys.find(j => j.id === id);
+  // Cast as JourneyFork because plannerJourneys contains forks (Phase 3.1)
+  const journey = plannerJourneys.find(j => j.id === id) as JourneyFork | undefined;
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(journey?.title || '');
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
@@ -37,7 +39,7 @@ const Planner: React.FC = () => {
 
   const handleTitleSave = () => {
     if (editedTitle.trim() && editedTitle !== journey.title) {
-      renameJourney(journey.id, editedTitle.trim());
+      renameJourney(journey, editedTitle.trim());
     }
     setIsEditingTitle(false);
   };
@@ -53,7 +55,7 @@ const Planner: React.FC = () => {
 
   const handleNoteSave = (stopId: string) => {
     const note = editingNotes[stopId] || '';
-    updateStopNote(journey.id, stopId, note);
+    updateStopNote(journey, stopId, note);
     setEditingNotes(prev => {
       const newNotes = { ...prev };
       delete newNotes[stopId];
@@ -77,7 +79,7 @@ const Planner: React.FC = () => {
 
   const handleRemoveStop = (stopId: string) => {
     if (window.confirm('Are you sure you want to remove this stop?')) {
-      removeStop(journey.id, stopId);
+      removeStop(journey, stopId);
     }
   };
 
@@ -191,7 +193,7 @@ const Planner: React.FC = () => {
                       <div className="flex flex-col gap-1 flex-shrink-0">
                         {/* Move Up */}
                         <button
-                          onClick={() => moveStop(journey.id, index, 'up')}
+                          onClick={() => moveStop(journey, index, 'up')}
                           disabled={index === 0}
                           className={`p-1.5 rounded-lg transition-colors ${index === 0
                             ? 'text-slate-300 cursor-not-allowed'
@@ -206,7 +208,7 @@ const Planner: React.FC = () => {
 
                         {/* Move Down */}
                         <button
-                          onClick={() => moveStop(journey.id, index, 'down')}
+                          onClick={() => moveStop(journey, index, 'down')}
                           disabled={index === journey.stops!.length - 1}
                           className={`p-1.5 rounded-lg transition-colors ${index === journey.stops!.length - 1
                             ? 'text-slate-300 cursor-not-allowed'

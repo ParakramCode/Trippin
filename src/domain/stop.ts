@@ -60,6 +60,5 @@ export interface UserStop extends StopTemplate {
     /** Whether the user has visited this stop */
     visited?: boolean;
 
-    // TODO: Consider adding timestamp for when visited
-    // TODO: Consider adding user photos/memories attached to this stop
+
 }

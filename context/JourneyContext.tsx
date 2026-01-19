@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, ReactNode, useCallback, use
 import { Journey, Stop, Moment } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { createJourneyFork, isJourneyFork } from '../src/domain/forkJourney';
+import type { JourneyFork } from '../src/domain/journeyFork';
+import { deepFreeze } from '../utils/immutability';
 
 /**
  * View mode for journey display
@@ -38,8 +40,7 @@ export type JourneyMode = 'INSPECTION' | 'PLANNING' | 'NAVIGATION' | 'COMPLETED'
 interface JourneyContextType {
   // STORAGE SPLIT: Separated template (read-only) from user (mutable) journeys
 
-  /** @deprecated Mixes discovered (JourneySource) and forked (JourneyFork) journeys. Use templateJourneys. */
-  journeys: Journey[];
+
 
   /** NEW: Read-only template journeys for discovery (JourneySource) */
   templateJourneys: Journey[];
@@ -47,15 +48,14 @@ interface JourneyContextType {
   /** User-owned forked/planned journeys (JourneyFork) - stored separately */
   plannerJourneys: Journey[];
 
-  /** @deprecated Creates mixed journey without proper domain separation */
-  addJourney: () => void;
-  persistJourney: (journey: Journey) => void;
+
+  persistJourney: (journey: JourneyFork) => void;
   forkJourney: (journey: Journey) => void;
-  removeFromPlanner: (journeyId: string) => void;
-  renameJourney: (journeyId: string, newTitle: string) => void;
-  moveStop: (journeyId: string, stopIndex: number, direction: 'up' | 'down') => void;
-  removeStop: (journeyId: string, stopId: string) => void;
-  updateStopNote: (journeyId: string, stopId: string, note: string) => void;
+  removeFromPlanner: (journey: JourneyFork) => void;
+  renameJourney: (journey: JourneyFork, newTitle: string) => void;
+  moveStop: (journey: JourneyFork, stopIndex: number, direction: 'up' | 'down') => void;
+  removeStop: (journey: JourneyFork, stopId: string) => void;
+  updateStopNote: (journey: JourneyFork, stopId: string, note: string) => void;
 
   // ============================================================================
   // SEMANTIC JOURNEY STATE (Read vs Edit Separation)
@@ -74,8 +74,8 @@ interface JourneyContextType {
    * Users can explore any journey safely without corrupting templates.
    * To make changes, they must explicitly fork first.
    */
-  inspectionJourney: Journey | null;
-  setInspectionJourney: (journey: Journey | null) => void;
+  inspectionJourney: Readonly<Journey> | null;
+  setInspectionJourney: (journey: Readonly<Journey> | null) => void;
 
   /**
    * MUTABLE ACTIVE JOURNEY
@@ -90,17 +90,22 @@ interface JourneyContextType {
    * Purpose: User-owned journey that can receive mutations.
    * Only forks should be active. Templates must be forked first.
    * 
-   * @deprecated Type is too permissive. Phase 3 will narrow to JourneyFork | null
+   *
+   * Type: JourneyFork | null
    */
-  activeJourney: Journey | null;
+  activeJourney: JourneyFork | null;
 
   /**
-   * @deprecated Allows setting discovered journeys as active. Use liveJourneyStore.setLive().
+   * Set active journey (Phase 3.1: Fork-only, type enforced)
    * 
-   * WARNING: Calling this with a JourneySource will log a warning but not block.
-   * Use loadJourney() instead for proper routing.
+   * STRICT ENFORCEMENT:
+   * - Only accepts JourneyFork instances
+   * - Passing JourneySource causes compile error
+   * - Runtime guards throw in development if non-fork passed
+   * 
+   * Use loadJourney() for automatic routing instead of calling this directly.
    */
-  setActiveJourney: (journey: Journey) => void;
+  setActiveJourney: (journey: JourneyFork) => void;
 
   /**
    * DISPLAY JOURNEY (Derived)
@@ -118,7 +123,7 @@ interface JourneyContextType {
    * 2. activeJourney (if present) → Mutable editing
    * 3. null (if neither) → No journey loaded
    */
-  currentJourney: Journey | null;
+  currentJourney: Readonly<Journey> | Journey | null;
 
   /**
    * READ-ONLY INDICATOR (Derived - Phase 2.3)
@@ -181,41 +186,37 @@ interface JourneyContextType {
    */
   journeyMode: JourneyMode | null;
 
-  /** @deprecated Mixes discovery and planner sources. Replace with preview/fork flow. */
+  /** Load a journey by ID. Handles routing to Inspection or Active mode automatically. */
   loadJourney: (journeyId: string) => void;
   userLocation: [number, number] | null;
   userHeading: number | null;
 
-  /**
-   * @deprecated Legacy navigation flag. Use journeyMode === 'NAVIGATION' instead.
-   * 
-   * This flag is manually set/unset and can drift from actual navigation state.
-   * journeyMode derives navigation state from multiple sources for accuracy.
-   */
-  isFollowing: boolean;
-  setIsFollowing: (v: boolean) => void;
-  /** @deprecated Global visited state without journey ownership. Move to JourneyFork.stops[].visited */
-  visitedStopIds: string[];
-  /** @deprecated Global mutation without journey context. Should be per-fork. */
-  markStopAsVisited: (stopId: string) => void;
-  /** @deprecated Global mutation without journey context. Should be per-fork. */
-  toggleStopVisited: (stopId: string) => void;
+  // Phase 3.2: Removed isFollowing/setIsFollowing - use journeyMode === 'NAVIGATION' instead
+
+
 
   // NEW: Per-journey visited state management (use these instead of global functions)
   /** Toggle visited state for a specific stop within a journey */
-  toggleStopVisitedInJourney: (journeyId: string, stopId: string) => void;
+  toggleStopVisitedInJourney: (journey: JourneyFork, stopId: string) => void;
   /** Mark a stop as visited within a specific journey */
-  markStopVisitedInJourney: (journeyId: string, stopId: string) => void;
+  markStopVisitedInJourney: (journey: JourneyFork, stopId: string) => void;
   /** Get array of visited stop IDs for a specific journey */
-  getVisitedStopsForJourney: (journeyId: string) => string[];
+  getVisitedStopsForJourney: (journey: JourneyFork) => string[];
 
-  completeJourney: (journeyId: string) => void;
-  isJourneyEditable: (journeyId: string) => boolean;
+  completeJourney: (journey: JourneyFork) => void;
+  isJourneyEditable: (journey: JourneyFork) => boolean;
   savedJourneyIds: Set<string>;
   isAlreadySaved: (journeyId: string) => boolean;
   createCustomJourney: () => Journey;
-  /** @deprecated Manual status management. Use liveJourneyStore.setLive() instead. */
-  startJourney: (journeyId: string) => void;
+  /** Start navigation mode for a journey */
+  startJourney: (journey: JourneyFork) => void;
+  /**
+   * Stop journey navigation (Phase 3.2)
+   * 
+   * Sets journey status back to PLANNED, ending navigation mode.
+   * Use this instead of setIsFollowing(false).
+   */
+  stopJourney: (journey: JourneyFork) => void;
 }
 
 const JourneyContext = createContext<JourneyContextType | undefined>(undefined);
@@ -239,8 +240,6 @@ const useLocationWatcher = (callback: (coords: [number, number], heading: number
 };
 
 /**
- * @deprecated This represents JourneySource data but uses the mixed Journey type.
- * Should be migrated to use JourneySource[] type from domain models.
  * These are immutable templates and should never be modified or set as active.
  */
 export const defaultJourneys: Journey[] = [
@@ -466,9 +465,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Template journeys: Read-only, immutable journey sources for discovery
   const templateJourneys = useMemo(() => defaultJourneys || [], []);
 
-  // Legacy: For backward compatibility, keep journeys referencing templates
-  /** @deprecated Use templateJourneys instead */
-  const journeys = templateJourneys;
+
 
   // User journeys: Mutable forks stored in localStorage with new key
   // NOTE: Changed key from 'trippin_planner_journeys' to 'trippin_user_forks'
@@ -496,25 +493,32 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * - Falls back to activeJourney for user-owned journeys
    * - Mutations only apply to activeJourney (never inspectionJourney)
    */
-  const [inspectionJourney, setInspectionJourney] = useState<Journey | null>(null);
+  const [inspectionJourney, setInspectionJourney] = useState<Readonly<Journey> | null>(null);
 
-  // Initialize activeJourney from localStorage if available, otherwise default to first journey
-  // TODO: CRITICAL UNSAFE MUTATION - Setting discovered journey as activeJourney
-  // ISSUE: This initializes activeJourney with a discovered journey from defaultJourneys.
-  // Any subsequent mutations (notes, visited state, reordering) will directly
-  // mutate the discovered journey template, polluting it for all users.
-  // DOMAIN MODEL: activeJourney should ONLY ever be a JourneyFork, never a JourneySource.
-  // Discovered journeys should be read-only for viewing, not set as active.
-  // Users must explicitly fork before a journey can be active.
-  // MIGRATION: Use inspectionJourney for discovered journeys instead.
-  const [activeJourney, setActiveJourney] = useState<Journey | null>(() => {
+  /**
+   * ACTIVE JOURNEY STATE (Phase 3.1: Type Enforced)
+   * 
+   * Initialize activeJourney from localStorage, but ONLY from plannerJourneys (forks).
+   * Templates should NEVER initialize as activeJourney.
+   * 
+   * Migration from Phase 2:
+   * - OLD: Could initialize from defaultJourneys (unsafe)
+   * - NEW: Only initializes from plannerJourneys (safe)
+   * - Type narrowing: JourneyFork | null enforced
+   */
+  const [activeJourney, setActiveJourney] = useState<JourneyFork | null>(() => {
     const savedId = localStorage.getItem('activeJourneyId');
     if (savedId) {
-      // Check default journeys (safely)
-      const found = (defaultJourneys || []).find(j => j.id === savedId);
-      if (found) return found;
+      // Only check plannerJourneys (forks), never templateJourneys
+      // Templates should go to inspectionJourney instead
+      const fork = (plannerJourneys || []).find(j => j.id === savedId);
+      if (fork && isJourneyFork(fork as any)) {
+        return fork as JourneyFork;
+      }
     }
-    return (defaultJourneys && defaultJourneys.length > 0) ? defaultJourneys[0] : null;
+    // Default to null (no active journey)
+    // User must explicitly activate a fork
+    return null;
   });
 
   // ============================================================================
@@ -601,93 +605,72 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
 
   /**
-   * ACTIVE JOURNEY ENFORCEMENT (Phase 2.1)
+   * ACTIVE JOURNEY SETTER (Phase 3.1: Type Enforced)
    * 
-   * setActiveJourney with strict fork validation
+   * STRICT ENFORCEMENT:
+   * - Type signature: Only accepts JourneyFork (compile-time safety)
+   * - Runtime guard: Throws error in development if non-fork passed
+   * - Production: Logs error, graceful degradation
    * 
-   * ENFORCEMENT RULES:
-   * - BLOCKS if journey is a JourneySource (template)
-   * - ALLOWS only if journey is a JourneyFork (user-owned)
-   * - Semantic guard: activeJourney = mutable forks ONLY
+   * Change from Phase 2:
+   * - Phase 2: Logged warning, still allowed
+   * - Phase 3.1: Throws error in dev, type-enforced
    * 
-   * Why this is NOT breaking:
-   * - loadJourney() already routes templates to inspectionJourney
-   * - Components should use loadJourney(), not setActiveJourney directly
-   * - This prevents accidental misuse, not intentional workflows
-   * 
-   * If blocked:
-   * - Journey is NOT set (prevents template corruption)
-   * - Console warning explains why and how to fix
-   * - Suggests using inspectionJourney or forking first
-   * 
-   * @param journey - Journey to set as active (must be a fork)
+   * Use loadJourney() instead for automatic routing.
    */
-  const setActiveJourneyWithValidation = useCallback((journey: Journey) => {
-    // PHASE 2.1: STRICT FORK VALIDATION
-    // Check if this is a JourneyFork (has fork metadata)
-    // Type cast needed because Journey type is broader than domain types
-    if (!isJourneyFork(journey as any)) {
-      // This is a JourneySource (template) - BLOCK IT
-      console.error(
-        '╔════════════════════════════════════════════════════════════════╗',
-        '\n║ [setActiveJourney] BLOCKED: Cannot set template as active     ║',
-        '\n╚════════════════════════════════════════════════════════════════╝',
-        '\n',
-        '\n⚠️  activeJourney can ONLY contain JourneyFork (user-owned), not JourneySource (template).',
-        '\n',
-        '\n📋 Journey Details:',
-        '\n   ID:', journey.id,
-        '\n   Title:', journey.title,
-        '\n   Type: JourneySource (template/discovered)',
-        '\n',
-        '\n❌ This operation was BLOCKED to prevent template corruption.',
-        '\n',
-        '\n✅ To fix, choose ONE of these options:',
-        '\n',
-        '\n   Option 1 (Recommended): Use loadJourney() instead',
-        '\n   ────────────────────────────────────────────────',
-        '\n   loadJourney(\'' + journey.id + '\')  // Automatically routes to inspectionJourney',
-        '\n',
-        '\n   Option 2: Fork first, then activate the fork',
-        '\n   ─────────────────────────────────────────────',
-        '\n   forkJourney(journey)  // Creates user-owned copy',
-        '\n   // Then activate the fork from My Trips',
-        '\n',
-        '\n   Option 3: For read-only viewing',
-        '\n   ─────────────────────────────────────',
-        '\n   setInspectionJourney(journey)  // View without mutating',
-        '\n',
-        '\n📚 Learn more: See ACTIVE_JOURNEY_OWNERSHIP.md',
-        '\n'
-      );
+  const setActiveJourneyWithValidation = useCallback((journey: JourneyFork) => {
+    // PHASE 3.1: TYPE-ENFORCED FORK VALIDATION
+    // TypeScript prevents JourneySource at compile time
+    // Runtime guard is defense-in-depth (catches "as any" casts, data corruption)
 
-      // DO NOT SET - this is the enforcement
-      // Template journeys must never become activeJourney
+    if (!isJourneyFork(journey as any)) {
+      const errorMessage = [
+        '╔════════════════════════════════════════════════════════════════╗',
+        '║ [setActiveJourney] TYPE ERROR: Non-fork passed                ║',
+        '╚════════════════════════════════════════════════════════════════╝',
+        '',
+        '⛔ STRICT ENFORCEMENT (Phase 3.1):',
+        '   activeJourney can ONLY contain JourneyFork instances.',
+        '',
+        '📋 Journey Details:',
+        `   ID: ${journey.id}`,
+        `   Title: ${(journey as any).title || 'Unknown'}`,
+        '   Type: Non-fork (missing sourceJourneyId or clonedAt)',
+        '',
+        '🔍 This should have caused a compile error.',
+        '   Likely caused by:',
+        '   - Unsafe type cast ("as any", "as JourneyFork")',
+        '   - Data corruption (journey in plannerJourneys without fork metadata)',
+        '',
+        '✅ To fix:',
+        '   1. Use loadJourney(id) for automatic routing',
+        '   2. Fork the journey first with forkJourney()',
+        '   3. Remove unsafe type casts',
+        ''
+      ].join('\n');
+
+      // Development: Throw error (fail fast)
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(errorMessage);
+      }
+
+      // Production: Log error but don't crash
+      console.error(errorMessage);
       return;
     }
 
-    // Passed validation - this is a JourneyFork, safe to set
+    // Type and runtime guards passed - safe to set
     setActiveJourney(journey);
   }, []);
 
 
 
-  /**
-   * @deprecated Creates mixed journey type without proper fork metadata.
-   * Use createJourneyFork() from domain utilities instead.
-   * NOTE: This function is now a no-op since templateJourneys are immutable.
-   * Use forkJourney() or createCustomJourney() instead.
-   */
-  const addJourney = useCallback(() => {
-    console.warn('addJourney() is deprecated. Use forkJourney() or createCustomJourney() instead.');
-    // No-op: templateJourneys are immutable, can't add to them
-    // This function exists only for backward compatibility
-  }, []);
 
-  const persistJourney = useCallback((journey: Journey) => {
+
+  const persistJourney = useCallback((journey: JourneyFork) => {
     const newJourney = {
       ...journey,
-      clonedAt: Date.now()
+      clonedAt: journey.clonedAt || Date.now()
     };
     setPlannerJourneys(prev => [newJourney, ...prev]);
   }, [setPlannerJourneys]);
@@ -702,16 +685,20 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    */
   const forkJourney = useCallback((journey: Journey) => {
     // Delegate to domain utility for consistent fork creation
-    // TODO: Pass actual user ID when authentication is implemented
+    // NOTE: Pass actual user ID when authentication is implemented
     const fork = createJourneyFork(journey as any, '');  // Empty ownerId for now
 
     // Add to user's planner
     setPlannerJourneys(prev => [...prev, fork as any]);
   }, [setPlannerJourneys]);
 
-  const removeFromPlanner = useCallback((journeyId: string) => {
-    setPlannerJourneys(prev => prev.filter(j => j.id !== journeyId));
-  }, [setPlannerJourneys]);
+  const removeFromPlanner = useCallback((journey: JourneyFork) => {
+    setPlannerJourneys(prev => prev.filter(j => j.id !== journey.id));
+    // Clear active journey if it's the one being removed
+    if (activeJourney?.id === journey.id) {
+      setActiveJourney(null);
+    }
+  }, [setPlannerJourneys, activeJourney]);
 
   /**
    * loadJourney - CORRECT WAY TO ACTIVATE/VIEW JOURNEYS (Phase 2.1)
@@ -748,7 +735,14 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Template journey: Use read-only inspection mode
       // This prevents the immutable template from becoming mutable
       // PHASE 2.1: Templates can NEVER go to activeJourney (enforced by guard)
-      setInspectionJourney(templateJourney);
+
+      // PHASE 3.5: Deep freeze for strict immutability
+      // In dev, we freeze the object to ensure no component can mutate it
+      const safeJourney = process.env.NODE_ENV !== 'production'
+        ? deepFreeze(templateJourney)
+        : templateJourney;
+
+      setInspectionJourney(safeJourney);
       setActiveJourney(null); // Clear active to prevent confusion
       localStorage.setItem('inspectionJourneyId', journeyId);
       return;
@@ -768,10 +762,10 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [userHeading, setUserHeading] = useState<number | null>(0);
-  const [isFollowing, setIsFollowing] = useState(false);
+  // Phase 3.2: Removed isFollowing state - using query params/status only
 
   /**
-   * DERIVED JOURNEY MODE (Phase 2.2)
+   * DERIVED JOURNEY MODE (Phase 3.2: No Manual Flags)
    * 
    * journeyMode: Unified semantic journey state
    * 
@@ -779,15 +773,12 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * 1. inspectionJourney exists → INSPECTION (read-only preview)
    * 2. activeJourney.isCompleted === true → COMPLETED (finished)
    * 3. activeJourney.status === 'LIVE' → NAVIGATION (live mode)
-   * 4. isFollowing === true → NAVIGATION (legacy flag support)
-   * 5. activeJourney exists → PLANNING (editing/planning)
-   * 6. Otherwise → null (no journey loaded)
+   * 4. activeJourney exists → PLANNING (editing/planning)
+   * 5. Otherwise → null (no journey loaded)
    * 
-   * This replaces manual flag checking with single semantic state.
-   * Preferred over checking isFollowing, status, isCompleted individually.
-   * 
-   * Legacy flags (isFollowing, status, isCompleted) still exist for
-   * backward compatibility but journeyMode is the preferred API.
+   * Phase 3.2 Change: Removed isFollowing from derivation.
+   * Navigation state now comes ONLY from journey.status='LIVE'.
+   * This eliminates manual flag synchronization issues.
    */
   const journeyMode: JourneyMode | null = useMemo(() => {
     // Priority 1: Inspection mode (read-only preview)
@@ -801,39 +792,22 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     // Priority 2: Completed journey
-    if (activeJourney.isCompleted === true) {
+    if (activeJourney.status === 'COMPLETED') {
       return 'COMPLETED';
     }
 
-    // Priority 3: Live navigation (status flag)
+    // Priority 3: Live navigation (status flag ONLY)
+    // Phase 3.2: Removed isFollowing check - status is single source of truth
     if (activeJourney.status === 'LIVE') {
       return 'NAVIGATION';
     }
 
-    // Priority 4: Live navigation (legacy isFollowing flag)
-    // NOTE: isFollowing is a manual flag, can be out of sync
-    // but we respect it for backward compatibility
-    if (isFollowing) {
-      return 'NAVIGATION';
-    }
-
-    // Priority 5: Default for activeJourney - planning/editing mode
+    // Priority 4: Default for activeJourney - planning/editing mode
     return 'PLANNING';
-  }, [inspectionJourney, activeJourney, isFollowing]);
+  }, [inspectionJourney, activeJourney]);
 
-  // TODO: UNSAFE MUTATION - Global visited stops list
-  // ISSUE: visitedStopIds is stored globally, but should be per-journey.
-  // If a user discovers Journey A, marks stops visited, then forks it,
-  // the visited state leaks across the source and all forks.
-  // DOMAIN MODEL: visited state should live in JourneyFork.stops[].visited (UserStop)
-  // NOT in a global list that affects all journey instances.
-  /**
-   * @deprecated Global visited state without journey ownership.
-   * Causes cross-journey pollution where visiting Stop ID "1" in Journey A
-   * marks it visited in ALL journeys containing that stop.
-   * MIGRATE TO: JourneyFork.stops[].visited (per-fork state)
-   */
-  const [visitedStopIds, setVisitedStopIds] = useLocalStorage<string[]>('trippin_visited_stops', []);
+
+
 
   useLocationWatcher(useCallback((coords, heading) => {
     setUserLocation(coords);
@@ -842,32 +816,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, []));
 
-  // TODO: UNSAFE MUTATION - Global stop visited tracking
-  // ISSUE: Marks stops as visited globally, not per-journey.
-  // If Stop ID "1" exists in multiple journeys, visiting it in one
-  // journey marks it as visited in ALL journeys.
-  // DOMAIN MODEL: This should mutate JourneyFork.stops[].visited,
-  // NOT a global stopId list. Each fork maintains its own visit state.
-  const markStopAsVisited = useCallback((stopId: string) => {
-    setVisitedStopIds(prev => {
-      if (prev.includes(stopId)) return prev;
-      return [...prev, stopId];
-    });
-  }, [setVisitedStopIds]);
 
-  // TODO: UNSAFE MUTATION - Global stop visited toggle
-  // ISSUE: Same as markStopAsVisited - operates on a global visited list.
-  // Should be scoped to the active JourneyFork instance.
-  // DOMAIN MODEL: Should toggle JourneyFork.stops[].visited per journey.
-  const toggleStopVisited = useCallback((stopId: string) => {
-    setVisitedStopIds(prev => {
-      if (prev.includes(stopId)) {
-        return prev.filter(id => id !== stopId);
-      } else {
-        return [...prev, stopId];
-      }
-    });
-  }, [setVisitedStopIds]);
 
   /**
    * NEW: Per-Journey Visited State Helpers
@@ -898,36 +847,20 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * @param journeyId - The journey containing the stop
    * @param stopId - The stop to toggle
    */
-  const toggleStopVisitedInJourney = useCallback((journeyId: string, stopId: string) => {
-    // OWNERSHIP GUARD 1: Require activeJourney
-    // If activeJourney is null, we're either in inspection mode or no journey is loaded.
-    // In either case, mutations should not be allowed.
-    if (!activeJourney) {
-      console.warn('[toggleStopVisitedInJourney] No activeJourney. Mutation blocked (likely inspection mode).');
-      return;
-    }
-
-    // OWNERSHIP GUARD 2: Verify journey ownership
-    // Only allow mutating the activeJourney, not arbitrary journeys.
-    // This prevents components from accidentally mutating the wrong journey.
-    if (activeJourney.id !== journeyId) {
-      console.warn(`[toggleStopVisitedInJourney] journeyId mismatch. Active: ${activeJourney.id}, Requested: ${journeyId}. Mutation blocked.`);
-      return;
-    }
-
+  const toggleStopVisitedInJourney = useCallback((journey: JourneyFork, stopId: string) => {
     // Guards passed - perform mutation
-    setPlannerJourneys(prev => prev.map(journey => {
-      if (journey.id !== journeyId || !journey.stops) return journey;
+    setPlannerJourneys(prev => prev.map(j => {
+      if (j.id !== journey.id || !j.stops) return j;
       return {
-        ...journey,
-        stops: journey.stops.map(stop =>
+        ...j,
+        stops: j.stops.map(stop =>
           stop.id === stopId ? { ...stop, visited: !stop.visited } : stop
         )
       };
     }));
 
     // Update active journey in sync
-    if (activeJourney.stops) {
+    if (activeJourney?.id === journey.id && activeJourney.stops) {
       setActiveJourney({
         ...activeJourney,
         stops: activeJourney.stops.map(stop =>
@@ -950,32 +883,20 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * @param journeyId - The journey containing the stop
    * @param stopId - The stop to mark as visited
    */
-  const markStopVisitedInJourney = useCallback((journeyId: string, stopId: string) => {
-    // OWNERSHIP GUARD 1: Require activeJourney
-    if (!activeJourney) {
-      console.warn('[markStopVisitedInJourney] No activeJourney. Mutation blocked (likely inspection mode).');
-      return;
-    }
-
-    // OWNERSHIP GUARD 2: Verify journey ownership
-    if (activeJourney.id !== journeyId) {
-      console.warn(`[markStopVisitedInJourney] journeyId mismatch. Active: ${activeJourney.id}, Requested: ${journeyId}. Mutation blocked.`);
-      return;
-    }
-
+  const markStopVisitedInJourney = useCallback((journey: JourneyFork, stopId: string) => {
     // Guards passed - perform mutation
-    setPlannerJourneys(prev => prev.map(journey => {
-      if (journey.id !== journeyId || !journey.stops) return journey;
+    setPlannerJourneys(prev => prev.map(j => {
+      if (j.id !== journey.id || !j.stops) return j;
       return {
-        ...journey,
-        stops: journey.stops.map(stop =>
+        ...j,
+        stops: j.stops.map(stop =>
           stop.id === stopId && !stop.visited ? { ...stop, visited: true } : stop
         )
       };
     }));
 
     // Update active journey in sync
-    if (activeJourney.stops) {
+    if (activeJourney?.id === journey.id && activeJourney.stops) {
       setActiveJourney({
         ...activeJourney,
         stops: activeJourney.stops.map(stop =>
@@ -990,41 +911,65 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * @param journeyId - The journey to check
    * @returns Array of visited stop IDs for this journey
    */
-  const getVisitedStopsForJourney = useCallback((journeyId: string): string[] => {
-    const journey = plannerJourneys.find(j => j.id === journeyId);
-    if (!journey || !journey.stops) return [];
+  /**
+   * Get visited stops for a specific journey
+   * @param journey - The journey to check
+   * @returns Array of visited stop IDs for this journey
+   */
+  const getVisitedStopsForJourney = useCallback((journey: JourneyFork): string[] => {
+    if (!journey.stops) return [];
     return journey.stops
       .filter(stop => stop.visited === true)
       .map(stop => stop.id);
-  }, [plannerJourneys]);
+  }, []);
 
   // Complete a journey with timestamp
-  const completeJourney = useCallback((journeyId: string) => {
+  // NOTE:
+  // Completion is represented exclusively by JourneyFork.status === 'COMPLETED'.
+  // No boolean completion flags are permitted.
+  const completeJourney = useCallback((journey: JourneyFork) => {
     const now = new Date().toISOString();
+
+    // 1. Update plannerJourneys (source of truth for planner tabs)
     setPlannerJourneys(prev => prev.map(j =>
-      j.id === journeyId
-        ? { ...j, isCompleted: true, completedAt: now }
+      j.id === journey.id
+        ? { ...j, completedAt: now, status: 'COMPLETED' }
         : j
     ));
-    // Update active journey if it's the one being completed
-    if (activeJourney?.id === journeyId) {
-      setActiveJourney({ ...activeJourney, isCompleted: true, completedAt: now });
+
+    // 2. Clear activeJourney to exit active/navigation mode
+    // This ensures the journey is no longer treated as "live"
+    if (activeJourney?.id === journey.id) {
+      setActiveJourney(null);
     }
-  }, [setPlannerJourneys, activeJourney]);
+
+    // 3. Clear inspection mode as well
+    setInspectionJourney(null);
+
+    // 4. Dev-only assertion to prevent regressions
+    if (process.env.NODE_ENV === 'development') {
+      setTimeout(() => {
+        console.assert(
+          plannerJourneys.some(j => j.id === journey.id && j.status === 'COMPLETED'),
+          '[completeJourney] Completed journey must exist in plannerJourneys with status=COMPLETED'
+        );
+      }, 100);
+    }
+  }, [setPlannerJourneys, activeJourney, plannerJourneys]);
 
   // Check if a journey is editable (must be in planner and not completed)
-  const isJourneyEditable = useCallback((journeyId: string) => {
-    const journey = plannerJourneys.find(j => j.id === journeyId);
-    return journey ? !journey.isCompleted : false;
-  }, [plannerJourneys]);
+  const isJourneyEditable = useCallback((journey: JourneyFork) => {
+    // Since input is JourneyFork, we just check completion status
+    return journey.status !== 'COMPLETED';
+  }, []);
 
   // Rename a journey in the planner
-  const renameJourney = useCallback((journeyId: string, newTitle: string) => {
+  const renameJourney = useCallback((journey: JourneyFork, newTitle: string) => {
     setPlannerJourneys(prev => prev.map(j =>
-      j.id === journeyId ? { ...j, title: newTitle } : j
+      j.id === journey.id ? { ...j, title: newTitle } : j
     ));
     // Update active journey if it's the one being renamed
-    if (activeJourney?.id === journeyId) {
+    if (activeJourney?.id === journey.id) {
       setActiveJourney({ ...activeJourney, title: newTitle });
     }
   }, [setPlannerJourneys, activeJourney]);
@@ -1042,56 +987,40 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * 
    * This is a defensive layer - UI should already prevent calls on templates.
    */
-  const moveStop = useCallback((journeyId: string, stopIndex: number, direction: 'up' | 'down') => {
-    // PHASE 2.4: Defensive fork validation
-    const targetJourney = plannerJourneys.find(j => j.id === journeyId);
+  /**
+   * Move a stop up or down in a journey (Phase 3.4: Strict Fork Only)
+   * 
+   * Strict Type Enforcement:
+   * - Arguments: JourneyFork
+   * - No runtime guards needed (TS enforced)
+   */
+  const moveStop = useCallback((journey: JourneyFork, stopIndex: number, direction: 'up' | 'down') => {
+    if (!journey.stops) return;
 
-    if (!targetJourney) {
-      console.warn(
-        '[moveStop] Journey not found in plannerJourneys.',
-        '\nJourney ID:', journeyId,
-        '\nOperation blocked: Cannot move stops on non-existent journey.'
-      );
-      return;
-    }
+    // Bounds check
+    const newIndex = direction === 'up' ? stopIndex - 1 : stopIndex + 1;
+    if (newIndex < 0 || newIndex >= journey.stops.length) return;
 
-    if (!isJourneyFork(targetJourney as any)) {
-      console.warn(
-        '[moveStop] Journey is not a fork. Mutations only allowed on user-owned forks.',
-        '\nJourney ID:', journeyId,
-        '\nJourney Title:', targetJourney.title,
-        '\nOperation blocked: Templates are immutable.',
-        '\nAction: Fork this journey first to make changes.'
-      );
-      return;
-    }
+    // Perform mutation
+    setPlannerJourneys(prev => prev.map(j => {
+      if (j.id !== journey.id || !j.stops) return j;
 
-    // Guards passed - perform mutation
-    setPlannerJourneys(prev => prev.map(journey => {
-      if (journey.id !== journeyId || !journey.stops) return journey;
-
-      const newStops = [...journey.stops];
-      const newIndex = direction === 'up' ? stopIndex - 1 : stopIndex + 1;
-
-      // Check bounds
-      if (newIndex < 0 || newIndex >= newStops.length) return journey;
-
+      const newStops = [...j.stops];
       // Swap stops
       [newStops[stopIndex], newStops[newIndex]] = [newStops[newIndex], newStops[stopIndex]];
 
-      return { ...journey, stops: newStops };
+      return { ...j, stops: newStops };
     }));
 
     // Update active journey if it's the one being modified
-    if (activeJourney?.id === journeyId && activeJourney.stops) {
+    if (activeJourney?.id === journey.id && activeJourney.stops) {
       const newStops = [...activeJourney.stops];
-      const newIndex = direction === 'up' ? stopIndex - 1 : stopIndex + 1;
       if (newIndex >= 0 && newIndex < newStops.length) {
         [newStops[stopIndex], newStops[newIndex]] = [newStops[newIndex], newStops[stopIndex]];
         setActiveJourney({ ...activeJourney, stops: newStops });
       }
     }
-  }, [setPlannerJourneys, activeJourney, plannerJourneys]);
+  }, [setPlannerJourneys, activeJourney]);
 
   /**
    * Remove a stop from a journey (Phase 2.4: Fork-only mutation)
@@ -1106,49 +1035,27 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * 
    * This is a defensive layer - UI should already prevent calls on templates.
    */
-  const removeStop = useCallback((journeyId: string, stopId: string) => {
-    // PHASE 2.4: Defensive fork validation
-    const targetJourney = plannerJourneys.find(j => j.id === journeyId);
-
-    if (!targetJourney) {
-      console.warn(
-        '[removeStop] Journey not found in plannerJourneys.',
-        '\nJourney ID:', journeyId,
-        '\nStop ID:', stopId,
-        '\nOperation blocked: Cannot remove stop from non-existent journey.'
-      );
-      return;
-    }
-
-    if (!isJourneyFork(targetJourney as any)) {
-      console.warn(
-        '[removeStop] Journey is not a fork. Mutations only allowed on user-owned forks.',
-        '\nJourney ID:', journeyId,
-        '\nJourney Title:', targetJourney.title,
-        '\nStop ID:', stopId,
-        '\nOperation blocked: Templates are immutable.',
-        '\nAction: Fork this journey first to make changes.'
-      );
-      return;
-    }
-
+  /**
+   * Remove a stop from a journey (Phase 3.4: Strict Fork Only)
+   */
+  const removeStop = useCallback((journey: JourneyFork, stopId: string) => {
     // Guards passed - perform mutation
-    setPlannerJourneys(prev => prev.map(journey => {
-      if (journey.id !== journeyId || !journey.stops) return journey;
-      return { ...journey, stops: journey.stops.filter(s => s.id !== stopId) };
+    setPlannerJourneys(prev => prev.map(j => {
+      if (j.id !== journey.id || !j.stops) return j;
+      return { ...j, stops: j.stops.filter(s => s.id !== stopId) };
     }));
 
     // Update active journey if it's the one being modified
-    if (activeJourney?.id === journeyId && activeJourney.stops) {
+    if (activeJourney?.id === journey.id && activeJourney.stops) {
       setActiveJourney({
         ...activeJourney,
         stops: activeJourney.stops.filter(s => s.id !== stopId)
       });
     }
-  }, [setPlannerJourneys, activeJourney, plannerJourneys]);
+  }, [setPlannerJourneys, activeJourney]);
 
   // Update a note on a specific stop
-  // TODO: PARTIAL SAFETY - Only updates planner journeys, but activeJourney sync is risky
+
   // ISSUE: Function correctly only mutates plannerJourneys (JourneyFork instances).
   // However, if activeJourney somehow references a discovered journey
   // (via loadJourney from defaultJourneys), the setActiveJourney mutation
@@ -1169,32 +1076,19 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * @param stopId - The stop to update
    * @param note - The note content
    */
-  const updateStopNote = useCallback((journeyId: string, stopId: string, note: string) => {
-    // OWNERSHIP GUARD 1: Require activeJourney
-    if (!activeJourney) {
-      console.warn('[updateStopNote] No activeJourney. Mutation blocked (likely inspection mode).');
-      return;
-    }
-
-    // OWNERSHIP GUARD 2: Verify journey ownership
-    if (activeJourney.id !== journeyId) {
-      console.warn(`[updateStopNote] journeyId mismatch. Active: ${activeJourney.id}, Requested: ${journeyId}. Mutation blocked.`);
-      return;
-    }
-
-    // Guards passed - perform mutation
-    setPlannerJourneys(prev => prev.map(journey => {
-      if (journey.id !== journeyId || !journey.stops) return journey;
+  const updateStopNote = useCallback((journey: JourneyFork, stopId: string, note: string) => {
+    setPlannerJourneys(prev => prev.map(j => {
+      if (j.id !== journey.id || !j.stops) return j;
       return {
-        ...journey,
-        stops: journey.stops.map(stop =>
+        ...j,
+        stops: j.stops.map(stop =>
           stop.id === stopId ? { ...stop, note } : stop
         )
       };
     }));
 
     // Update active journey if it's the one being modified
-    if (activeJourney?.id === journeyId && activeJourney.stops) {
+    if (activeJourney?.id === journey.id && activeJourney.stops) {
       setActiveJourney({
         ...activeJourney,
         stops: activeJourney.stops.map(stop =>
@@ -1231,44 +1125,60 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     return newJourney;
   }, [setPlannerJourneys]);
 
-  // Start a journey (set as live, unset all others, enable navigation)
-  // TODO: MIGRATE TO liveJourneyStore
-  // ISSUE: This function should use liveJourneyStore.setLive() instead of manual status management.
-  // The new architecture enforces:
-  // - Only ONE journey can be LIVE at a time
+
   // - Only JourneyFork can be LIVE (never JourneySource)
-  // - LIVE status is managed by liveJourneyStore, not local state
+  // - LIVE status is managed by activeJourney state
   // - Type guards prevent discovered journeys from becoming LIVE
-  const startJourney = useCallback((journeyId: string) => {
+  // Start a journey (set as live, unset all others, enable navigation)
+  const startJourney = useCallback((journey: JourneyFork) => {
     // Prevent starting completed journeys
-    const journey = plannerJourneys.find(j => j.id === journeyId);
-    if (journey?.isCompleted) return;
+    if (journey.status === 'COMPLETED') return;
 
     setPlannerJourneys(prev => prev.map(j => ({
       ...j,
-      status: j.id === journeyId ? "LIVE" : (j.sourceJourneyId || j.clonedAt ? "PLANNED" : "DISCOVERED")
+      status: j.id === journey.id ? "LIVE" : (j.sourceJourneyId || j.clonedAt ? "PLANNED" : "DISCOVERED")
     })));
 
-    // Enable navigation mode when starting a journey
-    setIsFollowing(true);
+    // Phase 3.2: Removed setIsFollowing - journeyMode derives from status now
 
     // Update active journey if it's the one being toggled
     if (activeJourney) {
       setActiveJourney({
         ...activeJourney,
-        status: activeJourney.id === journeyId ? "LIVE" : (activeJourney.sourceJourneyId || activeJourney.clonedAt ? "PLANNED" : "DISCOVERED")
+        status: activeJourney.id === journey.id ? "LIVE" : (activeJourney.sourceJourneyId || activeJourney.clonedAt ? "PLANNED" : "DISCOVERED")
       });
     }
-  }, [setPlannerJourneys, setIsFollowing, activeJourney, plannerJourneys]);
+  }, [setPlannerJourneys, activeJourney]);
+
+  /**
+   * Stop journey navigation (Phase 3.2)
+   * 
+   * Sets journey status back to PLANNED, ending navigation mode.
+   * journeyMode will automatically update to 'PLANNING'.
+   */
+  const stopJourney = useCallback((journey: JourneyFork) => {
+    setPlannerJourneys(prev => prev.map(j =>
+      j.id === journey.id ? { ...j, status: "PLANNED" } : j
+    ));
+
+    // Update active journey if it's the one being stopped
+    if (activeJourney?.id === journey.id) {
+      setActiveJourney({
+        ...activeJourney,
+        status: "PLANNED"
+      });
+    }
+  }, [setPlannerJourneys, activeJourney]);
+
 
   const value = {
     // STORAGE SPLIT
     templateJourneys,  // ✅ NEW: Read-only templates
-    journeys,  // @deprecated - use templateJourneys
+
     plannerJourneys,  // ✅ User forks (new storage key)
 
     // Journey management
-    addJourney, persistJourney, forkJourney, removeFromPlanner,
+    persistJourney, forkJourney, removeFromPlanner,
     renameJourney, moveStop, removeStop, updateStopNote,
 
     // ============================================================================
@@ -1292,15 +1202,17 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     // ============================================================================
 
     // User state
-    userLocation, userHeading, isFollowing, setIsFollowing,
+    userLocation, userHeading,
+    // Phase 3.2: Removed isFollowing/setIsFollowing
 
-    // DEPRECATED: Global visited state
-    visitedStopIds, markStopAsVisited, toggleStopVisited,
+
     // NEW: Per-journey visited state (use these instead)
     toggleStopVisitedInJourney, markStopVisitedInJourney, getVisitedStopsForJourney,
     completeJourney, isJourneyEditable,
     savedJourneyIds, isAlreadySaved,
-    createCustomJourney, startJourney
+    createCustomJourney,
+    startJourney,
+    stopJourney  // ✅ Phase 3.2: Stop navigation
   };
 
   return (

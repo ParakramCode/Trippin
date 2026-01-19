@@ -58,7 +58,5 @@ export interface JourneySource {
         };
     }>;
 
-    // TODO: Consider adding tags/categories for discovery filtering
-    // TODO: Consider adding difficulty level or other metadata
-    // TODO: Consider adding creation/publication timestamp
+
 }

@@ -11,7 +11,7 @@ import UserMarker from './UserMarker';
 import { checkProximity, getDistanceFromLatLonInKm } from '../utils/geometry';
 
 interface JourneyMapProps {
-    stops: Stop[];
+    stops: readonly Stop[];
     moments?: Moment[];
     mapboxToken: string;
     selectedStopId: string | null;
@@ -35,9 +35,11 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
     const {
         userLocation,
         userHeading,
-        isFollowing,
-        setIsFollowing,
+        journeyMode,  // Phase 3.2: Using journeyMode instead of isFollowing
+        stopJourney,  // Phase 3.2: Using stopJourney instead of setIsFollowing
         activeJourney,
+        // Phase 3.3: Use currentJourney for display logic
+        currentJourney,
         // NEW: Journey-scoped visited state
         markStopVisitedInJourney
     } = useJourneys();
@@ -149,14 +151,14 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
 
     // Reset Camera when Navigation Ends
     React.useEffect(() => {
-        if (!isFollowing && ref && 'current' in ref && ref.current) {
+        if (journeyMode !== 'NAVIGATION' && ref && 'current' in ref && ref.current) {
             ref.current.easeTo({
                 pitch: 0,
                 bearing: 0,
                 duration: 1000
             });
         }
-    }, [isFollowing, ref]);
+    }, [journeyMode, ref]);
 
     // Active Navigation Loop
     useEffect(() => {
@@ -164,7 +166,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
         const [lng, lat] = userLocation;
 
         // 1. Recenter if following
-        if (isFollowing) {
+        if (journeyMode === 'NAVIGATION') {
             recenterOnUser();
         }
 
@@ -185,7 +187,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                     // MIGRATED: Use stop.visited (per-journey) instead of global visitedStopIds
                     if (!stop.visited && activeJourney) {
                         // Only mark visited if we have an activeJourney (not inspection mode)
-                        markStopVisitedInJourney(activeJourney.id, stop.id);
+                        markStopVisitedInJourney(activeJourney, stop.id);
 
                         // Haptic Feedback
                         if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -200,7 +202,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
             }
         }
 
-    }, [userLocation, isFollowing, recenterOnUser, stops, onStopSelect, activeJourney, markStopVisitedInJourney]);
+    }, [userLocation, journeyMode, recenterOnUser, stops, onStopSelect, activeJourney, markStopVisitedInJourney]);
 
     // Fetch Directions (Existing)
     React.useEffect(() => {
@@ -238,7 +240,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
     React.useEffect(() => {
         if (selectedStopId && ref && 'current' in ref && ref.current) {
             // Only fly to stop if NOT following
-            if (!isFollowing) {
+            if (journeyMode !== 'NAVIGATION') {
                 const stop = stops.find(s => s.id === selectedStopId);
                 if (stop) {
                     ref.current.flyTo({
@@ -254,7 +256,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                 }
             }
         }
-    }, [selectedStopId, stops, ref, isFollowing]);
+    }, [selectedStopId, stops, ref, journeyMode]);
 
     return (
         <div className="relative w-full h-full">
@@ -268,7 +270,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                 style={{ width: '100%', height: '100%' }}
                 mapStyle="mapbox://styles/mapbox/light-v11"
                 mapboxAccessToken={mapboxToken}
-                padding={isFollowing ? { left: 340, top: 20, bottom: 20, right: 20 } : { left: 0, top: 0, bottom: 0, right: 0 }}
+                padding={journeyMode === 'NAVIGATION' ? { left: 340, top: 20, bottom: 20, right: 20 } : { left: 0, top: 0, bottom: 0, right: 0 }}
                 onMove={onMove}
             >
                 {routeGeoJSON && (
@@ -343,7 +345,10 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                         anchor="bottom"
                         onClick={(e) => {
                             e.originalEvent.stopPropagation();
-                            setIsFollowing(false); // Manual interaction stops following
+                            // Phase 3.2: Stop navigation when manually interacting with map
+                            if (activeJourney) {
+                                stopJourney(activeJourney);
+                            }
                             onStopSelect(stop);
                         }}
                     >
@@ -366,14 +371,18 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
             {/* Navigation UI Overlay: Compass Button */}
             <div className="absolute bottom-8 right-8 z-20">
                 <button
-                    onClick={() => setIsFollowing(!isFollowing)}
+                    onClick={() => {
+                        // Phase 3.2: Button only stops navigation (can't start from here)
+                        if (activeJourney && journeyMode === 'NAVIGATION') {
+                            stopJourney(activeJourney);
+                        }
+                    }}
                     className={`p-3 rounded-full backdrop-blur-md border border-white/40 shadow-lg transition-all duration-300
-                        ${isFollowing
+                        ${journeyMode === 'NAVIGATION'
                             ? 'bg-indigo-500/80 text-white animate-pulse ring-4 ring-indigo-500/30'
-                            : 'bg-white/80 text-slate-700 hover:bg-white'}
-                    `}
+                            : 'bg-white/80 text-slate-700 hover:bg-white'}\n                    `}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-6 h-6 transition-transform duration-500 ${isFollowing ? 'rotate-0' : '-rotate-45'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-6 h-6 transition-transform duration-500 ${journeyMode === 'NAVIGATION' ? 'rotate-0' : '-rotate-45'}`}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </button>
@@ -383,7 +392,8 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 moments={modalMoments}
-                author={activeJourney?.author}
+                // Phase 3.3: Use currentJourney.author (works in inspection mode too)
+                author={currentJourney?.author}
             />
         </div>
     );

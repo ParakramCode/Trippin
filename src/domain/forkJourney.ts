@@ -69,7 +69,9 @@ export function createJourneyFork(source: JourneySource, ownerId: string): Journ
         // Journey lifecycle state
         status: "PLANNED",
         clonedAt: Date.now(),
-        isCompleted: false,
+        // NOTE:
+        // Completion is represented exclusively by JourneyFork.status === 'COMPLETED'.
+        // No boolean completion flags are permitted.
         completedAt: undefined,
         isCustom: false,
     };

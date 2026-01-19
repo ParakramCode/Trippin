@@ -6,7 +6,7 @@ import { useJourneys } from '../context/JourneyContext';
 import { getDistanceFromLatLonInKm, checkProximity } from '../utils/geometry';
 
 interface NavigationDrawerProps {
-    stops: Stop[];
+    stops: readonly Stop[];
     selectedStopId: string | null;
     onSelect: (stop: Stop) => void;
 }
@@ -30,7 +30,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
      */
     const {
         userLocation,
-        setIsFollowing,
+        stopJourney,  // Phase 3.2: Using stopJourney instead of setIsFollowing
         activeJourney,
         completeJourney,
         // NEW: Journey-scoped visited state
@@ -77,7 +77,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
         // Only toggle if we have an activeJourney (not in inspection mode)
         if (!activeJourney) return;
 
-        toggleStopVisitedInJourney(activeJourney.id, stop.id);
+        toggleStopVisitedInJourney(activeJourney, stop.id);
 
         // Check if this completes the journey  
         // Use stop.visited (will be toggled) to determine new state
@@ -94,10 +94,15 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
     const handleMarkComplete = () => {
         // Mark journey as completed with timestamp
         if (activeJourney) {
-            completeJourney(activeJourney.id);
+            completeJourney(activeJourney);
         }
         setShowCompletionModal(false);
-        setIsFollowing(false);
+
+        // Navigate to My Trips to see completed journey
+        // Using setTimeout to allow state to update
+        setTimeout(() => {
+            window.location.href = '/my-trips';
+        }, 300);
     };
 
     return (
@@ -232,7 +237,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
                 {/* Footer / Exit Action */}
                 <div className="p-6 border-t border-slate-100/50 bg-white/50 backdrop-blur-sm">
                     <button
-                        onClick={() => setIsFollowing(false)}
+                        onClick={() => activeJourney && stopJourney(activeJourney)}
                         className="w-full py-3 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2 group"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 group-hover:scale-110 transition-transform">

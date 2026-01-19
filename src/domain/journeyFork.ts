@@ -7,6 +7,7 @@
  */
 
 import type { UserStop } from './stop';
+import type { Author } from '../../types';
 
 /**
  * JourneyStatus: Lifecycle state of a user's journey fork
@@ -54,6 +55,14 @@ export interface JourneyFork {
     /** UserStops containing both template data and user state */
     stops: UserStop[];
 
+    /**
+     * Original author (inherited from JourneySource, Phase 3.1)
+     * 
+     * When a journey is forked, the original author information is preserved
+     * for attribution purposes. Optional because custom journeys don't have a source.
+     */
+    author?: Author;
+
     /** User's personal moments/photos captured during the journey */
     moments?: Array<{
         id: string;
@@ -74,18 +83,13 @@ export interface JourneyFork {
     clonedAt: number;
 
     /** Timestamp when journey was completed (if applicable) */
+    /** Timestamp when journey was completed (if applicable) */
     completedAt?: string;
-
-    /** Flag indicating if the journey is completed */
-    isCompleted?: boolean;
 
     /** Flag indicating if this is a custom user-created journey (not forked from a source) */
     isCustom?: boolean;
 
-    // TODO: Consider adding userId/ownership information
-    // TODO: Consider adding share settings (private/public)
-    // TODO: Consider adding collaboration features
-    // TODO: Consider versioning if source journey gets updated
+
 }
 
 /**
@@ -101,7 +105,7 @@ export interface JourneyFork {
  */
 export function canBeLive(fork: JourneyFork): boolean {
     // Cannot set completed journeys to LIVE
-    if (fork.isCompleted) {
+    if (fork.status === 'COMPLETED') {
         return false;
     }
 
