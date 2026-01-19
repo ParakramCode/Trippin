@@ -35,7 +35,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
     const {
         userLocation,
         userHeading,
-        journeyMode,  // Phase 3.2: Using journeyMode instead of isFollowing
+        journeyMode,
         stopJourney,  // Phase 3.2: Using stopJourney instead of setIsFollowing
         activeJourney,
         // Phase 3.3: Use currentJourney for display logic

@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Stop, getJourneyStatus } from '../types';
+import { Stop } from '../types';
 import { useJourneys } from '../context/JourneyContext';
 import { getDistanceFromLatLonInKm, checkProximity } from '../utils/geometry';
 
@@ -30,10 +29,9 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
      */
     const {
         userLocation,
-        stopJourney,  // Phase 3.2: Using stopJourney instead of setIsFollowing
+        stopJourney,
         activeJourney,
         completeJourney,
-        // NEW: Journey-scoped visited state
         toggleStopVisitedInJourney
     } = useJourneys();
 
@@ -41,9 +39,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
     const [showCompletionModal, setShowCompletionModal] = useState(false);
     const [lastToggleTime, setLastToggleTime] = useState(0);
 
-    // Calculate stops remaining using journey-scoped visited state
     const totalStops = stops.length;
-    // MIGRATED: Use stop.visited (per-journey) instead of global visitedStopIds
     const visitedCount = stops.filter(s => s.visited === true).length;
     const stopsRemaining = totalStops - visitedCount;
 
@@ -73,10 +69,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
         if (now - lastToggleTime < 300) return;
         setLastToggleTime(now);
 
-        // MIGRATED: Use journey-scoped toggle instead of global
-        // Only toggle if we have an activeJourney (not in inspection mode)
         if (!activeJourney) return;
-
         toggleStopVisitedInJourney(activeJourney, stop.id);
 
         // Check if this completes the journey  
@@ -128,7 +121,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
                 {/* Header with Recording Status */}
                 <div className="p-6 border-b border-slate-100/50 flex flex-col gap-2 select-none">
                     {/* Recording indicator for forked/cloned journeys */}
-                    {activeJourney?.sourceJourneyId && getJourneyStatus(activeJourney) === "LIVE" && (
+                    {activeJourney?.sourceJourneyId && activeJourney.status === "LIVE" && (
                         <div className="flex items-center gap-2 mb-1">
                             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                             <span className="text-xs font-sans font-medium text-slate-500">
@@ -169,7 +162,6 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ stops, selectedStop
                     {stops.map((stop, index) => {
                         const isSelected = selectedStopId === stop.id;
                         const isClosest = closestStopIndex === index;
-                        // MIGRATED: Use stop.visited (per-journey) instead of global visitedStopIds
                         const isVisited = stop.visited === true;
 
                         // Calculate distance if user location is available

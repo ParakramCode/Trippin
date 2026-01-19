@@ -105,7 +105,6 @@ const Discover: React.FC = () => {
               {filteredJourneys.map((journey) => {
                 const isPlanned = plannerJourneys.some(p => p.sourceJourneyId === journey.id || p.id === journey.id);
                 const plannedJourney = plannerJourneys.find(p => p.sourceJourneyId === journey.id || p.id === journey.id);
-                const isCompleted = plannedJourney?.status === 'COMPLETED';
 
                 // Mock data helpers
                 const stopsCount = journey.stops?.length || 0;
@@ -138,7 +137,7 @@ const Discover: React.FC = () => {
                     {/* Status Badge */}
                     {isPlanned && (
                       <div className="absolute top-4 right-4 z-10">
-                        {isCompleted ? (
+                        {plannedJourney?.status === 'COMPLETED' ? (
                           // Completed Badge - Solid background
                           <div className="bg-emerald-500 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-white">

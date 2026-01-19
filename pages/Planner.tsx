@@ -1,9 +1,7 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useJourneys } from '../context/JourneyContext';
 import { motion } from 'framer-motion';
-import { getJourneyStatus } from '../types';
 import { JourneyFork } from '../src/domain/journeyFork';
 
 const Planner: React.FC = () => {
@@ -35,7 +33,7 @@ const Planner: React.FC = () => {
     );
   }
 
-  const isEditable = getJourneyStatus(journey) !== "COMPLETED"; // Only editable if not completed
+  const isEditable = journey.status !== 'COMPLETED'; // Only editable if not completed
 
   const handleTitleSave = () => {
     if (editedTitle.trim() && editedTitle !== journey.title) {

@@ -51,13 +51,3 @@ export interface Stop {
   visited?: boolean;
 }
 
-// Helper function to derive journey status from existing flags
-export function getJourneyStatus(journey: Journey): JourneyStatus {
-  // If status is already set, return it
-  if (journey.status) return journey.status;
-
-  // Otherwise derive from flags
-  // Priority order: COMPLETED > LIVE > PLANNED > DISCOVERED
-  if (journey.sourceJourneyId || journey.clonedAt) return "PLANNED";
-  return "DISCOVERED";
-}

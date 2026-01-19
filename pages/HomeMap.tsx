@@ -4,7 +4,7 @@ import { MapRef } from 'react-map-gl/mapbox';
 import JourneyMap from '../components/JourneyMap';
 import Filmstrip from '../components/Filmstrip';
 import DestinationDetail from '../components/DestinationDetail';
-import { Stop, getJourneyStatus } from '../types';
+import { Stop } from '../types';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import mapboxgl from 'mapbox-gl'; // Import mapboxgl for fitBounds
 import { useJourneys } from '../context/JourneyContext';
@@ -101,7 +101,7 @@ const HomeMap: React.FC = () => {
     // NOTE: Only applies to activeJourney, not inspection mode
     useEffect(() => {
         // Phase 3.2: Auto-start navigation if journey is LIVE but not in navigation mode yet
-        if (!isReadOnlyJourney && activeJourney && getJourneyStatus(activeJourney) === "LIVE" && activeJourney?.status !== 'COMPLETED' && journeyMode !== 'NAVIGATION') {
+        if (!isReadOnlyJourney && activeJourney && activeJourney.status === "LIVE" && journeyMode !== 'NAVIGATION') {
             // Journey is marked as LIVE, ensure it's in navigation mode
             startJourney(activeJourney);
         }

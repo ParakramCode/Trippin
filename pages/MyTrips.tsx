@@ -1,6 +1,6 @@
 import React from 'react';
 import { useJourneys } from '../context/JourneyContext';
-import { Journey, getJourneyStatus } from '../types';
+import { Journey } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -24,8 +24,7 @@ const MyTrips: React.FC = () => {
     removeFromPlanner,
     activeJourney,
     setActiveJourney,
-    loadJourney,  // Phase 3.1: Using loadJourney instead of direct setActiveJourney
-    // Phase 3.2: Removed setIsFollowing - using journeyMode instead
+    loadJourney,
     createCustomJourney,
     startJourney
   } = useJourneys();
@@ -115,7 +114,7 @@ const MyTrips: React.FC = () => {
     // Phase 3.1: Use loadJourney for type-safe routing
     loadJourney(journey.id);
 
-    // Start the journey (sets isLive and isFollowing)
+
     startJourney(journey as any);
 
     // Navigate to map for active navigation
@@ -191,7 +190,6 @@ const MyTrips: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {filteredJourneys.map(journey => {
-                  // MIGRATED: Use journey.stops[].visited (per-journey) instead of global visitedStopIds
                   const visitedCount = journey.stops?.filter(s => s.visited === true).length || 0;
                   const totalStops = journey.stops?.length || 0;
                   const progress = totalStops > 0 ? (visitedCount / totalStops) * 100 : 0;
@@ -224,12 +222,12 @@ const MyTrips: React.FC = () => {
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               onClick={(e) => handleStartJourney(e, journey)}
-                              className={`pointer-events-auto flex items-center gap-2 pl-3 pr-4 py-2 backdrop-blur-md border rounded-full font-sans font-medium text-xs shadow-lg transition-all filter drop-shadow-sm ${getJourneyStatus(journey) === "LIVE"
+                              className={`pointer-events-auto flex items-center gap-2 pl-3 pr-4 py-2 backdrop-blur-md border rounded-full font-sans font-medium text-xs shadow-lg transition-all filter drop-shadow-sm ${journey.status === "LIVE"
                                 ? 'bg-emerald-500/90 border-emerald-400/30 text-white'
                                 : 'bg-white/40 border-white/20 text-slate-700 hover:bg-white/50'
                                 }`}
                             >
-                              {getJourneyStatus(journey) === "LIVE" ? (
+                              {journey.status === "LIVE" ? (
                                 <>
                                   <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
                                   <span>Live</span>

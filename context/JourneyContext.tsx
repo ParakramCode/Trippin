@@ -3,7 +3,6 @@ import { Journey, Stop, Moment } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { createJourneyFork, isJourneyFork } from '../src/domain/forkJourney';
 import type { JourneyFork } from '../src/domain/journeyFork';
-import { deepFreeze } from '../utils/immutability';
 
 /**
  * View mode for journey display
@@ -18,7 +17,7 @@ export type ViewMode = 'INSPECTION' | 'ACTIVE' | 'NONE';
  * Journey mode - unified semantic state (Phase 2.2)
  * 
  * Derived from multiple state flags to provide single source of truth for journey state.
- * This replaces manual checking of isFollowing, status, isCompleted, etc.
+ * This provides unified semantic state for journey display.
  * 
  * Modes:
  * - INSPECTION: Viewing a journey in read-only mode (template or fork preview)
@@ -28,8 +27,8 @@ export type ViewMode = 'INSPECTION' | 'ACTIVE' | 'NONE';
  * 
  * Derivation Logic:
  * 1. If inspectionJourney exists → INSPECTION
- * 2. If activeJourney.isCompleted → COMPLETED
- * 3. If activeJourney.status === 'LIVE' OR isFollowing → NAVIGATION
+ * 2. If activeJourney.status === 'COMPLETED' → COMPLETED
+ * 3. If activeJourney.status === 'LIVE' → NAVIGATION
  * 4. If activeJourney exists → PLANNING
  * 5. Otherwise → null (no journey loaded)
  * 
@@ -46,13 +45,12 @@ interface JourneyContextType {
   templateJourneys: Journey[];
 
   /** User-owned active/planned journeys (JourneyFork) - PLANNING/LIVE only */
-  plannerJourneys: Journey[];
+  plannerJourneys: JourneyFork[];
 
   /** User-owned completed journeys (JourneyFork) - COMPLETED only, separate collection */
-  completedJourneys: Journey[];
+  completedJourneys: JourneyFork[];
 
 
-  persistJourney: (journey: JourneyFork) => void;
   forkJourney: (journey: Journey) => void;
   removeFromPlanner: (journey: JourneyFork) => void;
   renameJourney: (journey: JourneyFork, newTitle: string) => void;
@@ -165,15 +163,9 @@ interface JourneyContextType {
    * JOURNEY MODE (Derived - Phase 2.2)
    * 
    * journeyMode: Unified semantic state for journey lifecycle
-   * - INSPECTION: Read-only preview (inspectionJourney set)
-   * - PLANNING: Editing a fork, not yet started (activeJourney, no navigation)
-   * - NAVIGATION: Actively navigating (activeJourney with status=LIVE or isFollowing)
-   * - COMPLETED: Journey finished (activeJourney.isCompleted)
-   * - null: No journey loaded
    * 
    * Purpose: Single source of truth for journey state.
    * Replaces manual checking of isFollowing, status, isCompleted flags.
-   * Preferred over individual flags for state determination.
    * 
    * Examples:
    * ```typescript
@@ -210,7 +202,7 @@ interface JourneyContextType {
   isJourneyEditable: (journey: JourneyFork) => boolean;
   savedJourneyIds: Set<string>;
   isAlreadySaved: (journeyId: string) => boolean;
-  createCustomJourney: () => Journey;
+  createCustomJourney: () => JourneyFork;
   /** Start navigation mode for a journey */
   startJourney: (journey: JourneyFork) => void;
   /**
@@ -476,13 +468,13 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
   // EXPLICIT STATE OWNERSHIP:
   // plannerJourneys = PLANNING / LIVE journeys only
   // completedJourneys = COMPLETED journeys only (separate collection)
-  const [plannerJourneys, setPlannerJourneys] = useLocalStorage<Journey[]>(
-    'trippin_user_forks',  // ✅ Active/planned journeys
+  const [plannerJourneys, setPlannerJourneys] = useLocalStorage<JourneyFork[]>(
+    'trippin_user_forks',
     []
   );
 
-  const [completedJourneys, setCompletedJourneys] = useLocalStorage<Journey[]>(
-    'trippin_completed_journeys',  // ✅ Completed journeys (separate)
+  const [completedJourneys, setCompletedJourneys] = useLocalStorage<JourneyFork[]>(
+    'trippin_completed_journeys',
     []
   );
 
@@ -520,15 +512,11 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [activeJourney, setActiveJourney] = useState<JourneyFork | null>(() => {
     const savedId = localStorage.getItem('activeJourneyId');
     if (savedId) {
-      // Only check plannerJourneys (forks), never templateJourneys
-      // Templates should go to inspectionJourney instead
       const fork = (plannerJourneys || []).find(j => j.id === savedId);
-      if (fork && isJourneyFork(fork as any)) {
-        return fork as JourneyFork;
+      if (fork) {
+        return fork;
       }
     }
-    // Default to null (no active journey)
-    // User must explicitly activate a fork
     return null;
   });
 
@@ -678,14 +666,6 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
 
 
-  const persistJourney = useCallback((journey: JourneyFork) => {
-    const newJourney = {
-      ...journey,
-      clonedAt: journey.clonedAt || Date.now()
-    };
-    setPlannerJourneys(prev => [newJourney, ...prev]);
-  }, [setPlannerJourneys]);
-
   /**
    * Fork a journey (create personalized copy for user's planner)
    * 
@@ -695,12 +675,8 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * @param journey - Journey to fork (can be template or existing fork)
    */
   const forkJourney = useCallback((journey: Journey) => {
-    // Delegate to domain utility for consistent fork creation
-    // NOTE: Pass actual user ID when authentication is implemented
-    const fork = createJourneyFork(journey as any, '');  // Empty ownerId for now
-
-    // Add to user's planner
-    setPlannerJourneys(prev => [...prev, fork as any]);
+    const fork = createJourneyFork(journey as any, '');
+    setPlannerJourneys(prev => [...prev, fork]);
   }, [setPlannerJourneys]);
 
   const removeFromPlanner = useCallback((journey: JourneyFork) => {
@@ -743,18 +719,8 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Check if this is a template journey (from templateJourneys)
     const templateJourney = templateJourneys.find(j => j.id === journeyId);
     if (templateJourney) {
-      // Template journey: Use read-only inspection mode
-      // This prevents the immutable template from becoming mutable
-      // PHASE 2.1: Templates can NEVER go to activeJourney (enforced by guard)
-
-      // PHASE 3.5: Deep freeze for strict immutability
-      // In dev, we freeze the object to ensure no component can mutate it
-      const safeJourney = process.env.NODE_ENV !== 'production'
-        ? deepFreeze(templateJourney)
-        : templateJourney;
-
-      setInspectionJourney(safeJourney);
-      setActiveJourney(null); // Clear active to prevent confusion
+      setInspectionJourney(templateJourney);
+      setActiveJourney(null);
       localStorage.setItem('inspectionJourneyId', journeyId);
       return;
     }
@@ -783,7 +749,6 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [userHeading, setUserHeading] = useState<number | null>(0);
-  // Phase 3.2: Removed isFollowing state - using query params/status only
 
   /**
    * DERIVED JOURNEY MODE (Phase 3.2: No Manual Flags)
@@ -792,14 +757,11 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * 
    * Derivation Priority (first match wins):
    * 1. inspectionJourney exists → INSPECTION (read-only preview)
-   * 2. activeJourney.isCompleted === true → COMPLETED (finished)
+   * 2. activeJourney.status === 'COMPLETED' → COMPLETED (finished)
    * 3. activeJourney.status === 'LIVE' → NAVIGATION (live mode)
    * 4. activeJourney exists → PLANNING (editing/planning)
    * 5. Otherwise → null (no journey loaded)
    * 
-   * Phase 3.2 Change: Removed isFollowing from derivation.
-   * Navigation state now comes ONLY from journey.status='LIVE'.
-   * This eliminates manual flag synchronization issues.
    */
   const journeyMode: JourneyMode | null = useMemo(() => {
     // Priority 1: Inspection mode (read-only preview)
@@ -818,7 +780,6 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     // Priority 3: Live navigation (status flag ONLY)
-    // Phase 3.2: Removed isFollowing check - status is single source of truth
     if (activeJourney.status === 'LIVE') {
       return 'NAVIGATION';
     }
@@ -840,10 +801,9 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
 
   /**
-   * NEW: Per-Journey Visited State Helpers
+   * Per-Journey Visited State Helpers
    * 
-   * These functions manage visited state WITHIN the journey object (journey.stops[].visited)
-   * instead of the global visitedStopIds array.
+   * These functions manage visited state within each journey's stops.
    * 
    * Benefits:
    * - Each fork maintains independent visited state
@@ -1135,19 +1095,22 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [savedJourneyIds]);
 
   // Create a new custom journey
-  const createCustomJourney = useCallback(() => {
-    const newJourney: Journey = {
-      id: `custom-${Date.now()}`,
-      title: 'New Journey',
-      location: 'Add Location',
-      duration: '0 Days',
-      imageUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80&auto=format&fit=crop',
-      isCustom: true,
+  const createCustomJourney = useCallback((): JourneyFork => {
+    const id = `custom-${Date.now()}`;
+    const newJourney: JourneyFork = {
+      id,
+      title: 'My Custom Journey',
+      location: 'Add location...',
+      duration: '1 Day',
+      imageUrl: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800',
       stops: [],
-      moments: []
+      moments: [],
+      sourceJourneyId: id,
+      clonedAt: Date.now(),
+      isCustom: true,
+      status: 'PLANNED'
     };
-
-    setPlannerJourneys(prev => [...prev, newJourney]);
+    setPlannerJourneys(prev => [newJourney, ...prev]);
     return newJourney;
   }, [setPlannerJourneys]);
 
@@ -1204,7 +1167,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     completedJourneys,    // ✅ COMPLETED journeys only (separate)
 
     // Journey management
-    persistJourney, forkJourney, removeFromPlanner,
+    forkJourney, removeFromPlanner,
     renameJourney, moveStop, removeStop, updateStopNote,
 
     // ============================================================================
@@ -1229,7 +1192,6 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // User state
     userLocation, userHeading,
-    // Phase 3.2: Removed isFollowing/setIsFollowing
 
 
     // NEW: Per-journey visited state (use these instead)
