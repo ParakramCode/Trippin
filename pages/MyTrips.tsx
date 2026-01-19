@@ -19,7 +19,8 @@ const MyTrips: React.FC = () => {
    * Benefit: Each fork has independent progress tracking
    */
   const {
-    plannerJourneys,
+    plannerJourneys,      // PLANNING/LIVE only
+    completedJourneys,    // COMPLETED only (separate collection)
     removeFromPlanner,
     activeJourney,
     setActiveJourney,
@@ -31,27 +32,21 @@ const MyTrips: React.FC = () => {
   const navigate = useNavigate();
   const [filter, setFilter] = React.useState<'planned' | 'completed'>('planned');
 
-  // Task 2: Filtering Logic
+  // EXPLICIT STATE OWNERSHIP:
+  // - Planned tab: shows plannerJourneys (PLANNING/LIVE)
+  // - Completed tab: shows completedJourneys (COMPLETED)
+  // - No filtering needed - collections are already separated
   const filteredJourneys = React.useMemo(() => {
-    if (!plannerJourneys) return [];
+    const journeys = filter === 'completed' ? completedJourneys : plannerJourneys;
+    if (!journeys) return [];
 
-    // 1. Filter
-    const filtered = plannerJourneys.filter(j => {
-      const isCompleted = j.status === 'COMPLETED';
-
-
-      if (filter === 'completed') {
-        return isCompleted;
-      } else {
-        return !isCompleted;
-      }
-    });
-
-    // 2. Sort
-    return filtered.sort((a, b) => {
+    // Sort
+    return journeys.sort((a, b) => {
       // Active first in Planned tab
-      if (activeJourney && a.id === activeJourney.id) return -1;
-      if (activeJourney && b.id === activeJourney.id) return 1;
+      if (filter === 'planned') {
+        if (activeJourney && a.id === activeJourney.id) return -1;
+        if (activeJourney && b.id === activeJourney.id) return 1;
+      }
 
       // For completed tab, sort by completion date (most recent first)
       if (filter === 'completed' && a.completedAt && b.completedAt) {
@@ -60,7 +55,7 @@ const MyTrips: React.FC = () => {
 
       return 0;
     });
-  }, [plannerJourneys, activeJourney, filter]);
+  }, [plannerJourneys, completedJourneys, activeJourney, filter]);
 
   // Helper function to format completion date
   const formatCompletionDate = (isoDate: string) => {

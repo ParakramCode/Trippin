@@ -45,8 +45,11 @@ interface JourneyContextType {
   /** NEW: Read-only template journeys for discovery (JourneySource) */
   templateJourneys: Journey[];
 
-  /** User-owned forked/planned journeys (JourneyFork) - stored separately */
+  /** User-owned active/planned journeys (JourneyFork) - PLANNING/LIVE only */
   plannerJourneys: Journey[];
+
+  /** User-owned completed journeys (JourneyFork) - COMPLETED only, separate collection */
+  completedJourneys: Journey[];
 
 
   persistJourney: (journey: JourneyFork) => void;
@@ -470,8 +473,16 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
   // User journeys: Mutable forks stored in localStorage with new key
   // NOTE: Changed key from 'trippin_planner_journeys' to 'trippin_user_forks'
   // to prevent mixing with old data structure
+  // EXPLICIT STATE OWNERSHIP:
+  // plannerJourneys = PLANNING / LIVE journeys only
+  // completedJourneys = COMPLETED journeys only (separate collection)
   const [plannerJourneys, setPlannerJourneys] = useLocalStorage<Journey[]>(
-    'trippin_user_forks',  // ✅ New key: separate from templates
+    'trippin_user_forks',  // ✅ Active/planned journeys
+    []
+  );
+
+  const [completedJourneys, setCompletedJourneys] = useLocalStorage<Journey[]>(
+    'trippin_completed_journeys',  // ✅ Completed journeys (separate)
     []
   );
 
@@ -758,7 +769,17 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
       localStorage.setItem('activeJourneyId', journeyId);
       return;
     }
-  }, [templateJourneys, plannerJourneys]);
+
+    // Check if this is a completed journey (from completedJourneys)
+    const completedJourney = completedJourneys.find(j => j.id === journeyId);
+    if (completedJourney) {
+      // GUARD: Completed journeys can only be viewed, never made active
+      // Use inspection mode for read-only viewing
+      setInspectionJourney(completedJourney);
+      setActiveJourney(null);
+      return;
+    }
+  }, [templateJourneys, plannerJourneys, completedJourneys]);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [userHeading, setUserHeading] = useState<number | null>(0);
@@ -926,36 +947,41 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Complete a journey with timestamp
   // NOTE:
   // Completion is represented exclusively by JourneyFork.status === 'COMPLETED'.
-  // No boolean completion flags are permitted.
+  // Completed journeys are MOVED to a separate collection (not just status update).
   const completeJourney = useCallback((journey: JourneyFork) => {
     const now = new Date().toISOString();
 
-    // 1. Update plannerJourneys (source of truth for planner tabs)
-    setPlannerJourneys(prev => prev.map(j =>
-      j.id === journey.id
-        ? { ...j, completedAt: now, status: 'COMPLETED' }
-        : j
-    ));
+    // Create completed version of the journey
+    const completedJourney = {
+      ...journey,
+      completedAt: now,
+      status: 'COMPLETED' as const
+    };
 
-    // 2. Clear activeJourney to exit active/navigation mode
-    // This ensures the journey is no longer treated as "live"
+    // 1. REMOVE from plannerJourneys (no longer active/planned)
+    setPlannerJourneys(prev => prev.filter(j => j.id !== journey.id));
+
+    // 2. ADD to completedJourneys (append, don't replace)
+    setCompletedJourneys(prev => [...prev, completedJourney]);
+
+    // 3. Clear activeJourney to exit active/navigation mode
     if (activeJourney?.id === journey.id) {
       setActiveJourney(null);
     }
 
-    // 3. Clear inspection mode as well
+    // 4. Clear inspection mode as well
     setInspectionJourney(null);
 
-    // 4. Dev-only assertion to prevent regressions
+    // 5. Dev-only assertion to prevent regressions
     if (process.env.NODE_ENV === 'development') {
       setTimeout(() => {
         console.assert(
-          plannerJourneys.some(j => j.id === journey.id && j.status === 'COMPLETED'),
-          '[completeJourney] Completed journey must exist in plannerJourneys with status=COMPLETED'
+          completedJourneys.some(j => j.id === journey.id && j.status === 'COMPLETED'),
+          '[completeJourney] Completed journey must exist in completedJourneys with status=COMPLETED'
         );
       }, 100);
     }
-  }, [setPlannerJourneys, activeJourney, plannerJourneys]);
+  }, [setPlannerJourneys, setCompletedJourneys, activeJourney, completedJourneys]);
 
   // Check if a journey is editable (must be in planner and not completed)
   const isJourneyEditable = useCallback((journey: JourneyFork) => {
@@ -1172,10 +1198,10 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
 
   const value = {
-    // STORAGE SPLIT
-    templateJourneys,  // ✅ NEW: Read-only templates
-
-    plannerJourneys,  // ✅ User forks (new storage key)
+    // EXPLICIT STATE OWNERSHIP
+    templateJourneys,     // ✅ Read-only templates
+    plannerJourneys,      // ✅ PLANNING/LIVE journeys only
+    completedJourneys,    // ✅ COMPLETED journeys only (separate)
 
     // Journey management
     persistJourney, forkJourney, removeFromPlanner,
