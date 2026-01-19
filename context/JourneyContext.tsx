@@ -3,6 +3,7 @@ import { Journey, Stop, Moment } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { createJourneyFork, isJourneyFork } from '../src/domain/forkJourney';
 import type { JourneyFork } from '../src/domain/journeyFork';
+import type { UserStop } from '../src/domain/stop';
 
 /**
  * View mode for journey display
@@ -56,6 +57,7 @@ interface JourneyContextType {
   renameJourney: (journey: JourneyFork, newTitle: string) => void;
   moveStop: (journey: JourneyFork, stopIndex: number, direction: 'up' | 'down') => void;
   removeStop: (journey: JourneyFork, stopId: string) => void;
+  addStop: (journey: JourneyFork, stop: UserStop, insertIndex?: number) => void;
   updateStopNote: (journey: JourneyFork, stopId: string, note: string) => void;
 
   // ============================================================================
@@ -1040,6 +1042,63 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [setPlannerJourneys, activeJourney]);
 
+  /**
+   * Add a new stop to a journey
+   * 
+   * @param journey - The journey to add the stop to
+   * @param stop - The stop to add
+   * @param insertIndex - Optional index to insert at (otherwise appends to end)
+   */
+  const addStop = useCallback((journey: JourneyFork, stop: UserStop, insertIndex?: number) => {
+    // Safety: Only edit if journey is not completed
+    if (journey.status === 'COMPLETED') return;
+
+    setPlannerJourneys(prev => prev.map(j => {
+      if (j.id !== journey.id) return j;
+
+      const currentStops = j.stops || [];
+      let newStops: UserStop[];
+
+      if (insertIndex !== undefined && insertIndex >= 0 && insertIndex <= currentStops.length) {
+        // Insert at specific index
+        newStops = [
+          ...currentStops.slice(0, insertIndex),
+          stop,
+          ...currentStops.slice(insertIndex)
+        ];
+      } else {
+        // Append to end
+        newStops = [...currentStops, stop];
+      }
+
+      return {
+        ...j,
+        stops: newStops
+      };
+    }));
+
+    // Sync activeJourney
+    if (activeJourney?.id === journey.id) {
+      const currentStops = activeJourney.stops || [];
+      let newStops: UserStop[];
+
+      if (insertIndex !== undefined && insertIndex >= 0 && insertIndex <= currentStops.length) {
+        newStops = [
+          ...currentStops.slice(0, insertIndex),
+          stop,
+          ...currentStops.slice(insertIndex)
+        ];
+      } else {
+        newStops = [...currentStops, stop];
+      }
+
+      setActiveJourney({
+        ...activeJourney,
+        stops: newStops
+      });
+    }
+  }, [setPlannerJourneys, activeJourney]);
+
   // Update a note on a specific stop
 
   // ISSUE: Function correctly only mutates plannerJourneys (JourneyFork instances).
@@ -1168,7 +1227,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // Journey management
     forkJourney, removeFromPlanner,
-    renameJourney, moveStop, removeStop, updateStopNote,
+    renameJourney, moveStop, removeStop, addStop, updateStopNote,
 
     // ============================================================================
     // SEMANTIC JOURNEY STATE (Read vs Edit Separation)

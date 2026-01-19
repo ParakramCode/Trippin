@@ -7,7 +7,7 @@ import { JourneyFork } from '../src/domain/journeyFork';
 const Planner: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { plannerJourneys, renameJourney, moveStop, removeStop, updateStopNote } = useJourneys();
+  const { plannerJourneys, renameJourney, moveStop, removeStop, addStop, updateStopNote } = useJourneys();
 
   // Cast as JourneyFork because plannerJourneys contains forks (Phase 3.1)
   const journey = plannerJourneys.find(j => j.id === id) as JourneyFork | undefined;
@@ -81,6 +81,18 @@ const Planner: React.FC = () => {
     }
   };
 
+  const handleAddStop = () => {
+    const newStop = {
+      id: `stop-${Date.now()}`,
+      name: 'New Stop',
+      coordinates: [0, 0] as [number, number],
+      imageUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800',
+      note: '',
+      visited: false
+    };
+    addStop(journey, newStop);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 pb-24">
       <div className="max-w-4xl mx-auto p-6">
@@ -152,7 +164,20 @@ const Planner: React.FC = () => {
 
         {/* Stops List */}
         <div className="space-y-4">
-          <h2 className="font-sans text-xl font-bold text-slate-800 mb-4">Your Route</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-sans text-xl font-bold text-slate-800">Your Route</h2>
+            {isEditable && (
+              <button
+                onClick={handleAddStop}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-dark to-brand-light text-white rounded-full font-sans font-medium text-sm hover:scale-105 transition-transform shadow-md"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clipRule="evenodd" />
+                </svg>
+                Add Stop
+              </button>
+            )}
+          </div>
 
           {journey.stops && journey.stops.length > 0 ? (
             journey.stops.map((stop, index) => (
