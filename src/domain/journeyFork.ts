@@ -32,13 +32,20 @@ export type JourneyStatus = "DISCOVERED" | "PLANNED" | "LIVE" | "COMPLETED";
  * 
  * The fork maintains a reference to its source journey but operates independently.
  * Changes to the fork do not affect the original source.
+ * 
+ * NOTE: Custom user-created journeys have sourceJourneyId = undefined
  */
 export interface JourneyFork {
     /** Unique identifier for this fork instance */
     id: string;
 
-    /** Reference to the source journey this was forked from */
-    sourceJourneyId: string;
+    /**
+     * Reference to the source journey this was forked from
+     * 
+     * - Defined: Journey was forked from a template/discovered journey
+     * - Undefined: Custom journey created by user from scratch
+     */
+    sourceJourneyId?: string;
 
     /** Title (initially copied from source, can be customized) */
     title: string;
@@ -83,7 +90,6 @@ export interface JourneyFork {
     clonedAt: number;
 
     /** Timestamp when journey was completed (if applicable) */
-    /** Timestamp when journey was completed (if applicable) */
     completedAt?: string;
 
     /** Flag indicating if this is a custom user-created journey (not forked from a source) */
@@ -96,9 +102,11 @@ export interface JourneyFork {
  * Runtime validation: Check if a journey fork can become LIVE
  * 
  * Rules enforced:
- * - Must be a valid JourneyFork (has sourceJourneyId, clonedAt)
  * - Cannot be completed
  * - Status must be PLANNED or LIVE
+ * - Must have valid fork properties (clonedAt always exists for forks)
+ * 
+ * NOTE: Custom journeys (sourceJourneyId undefined) CAN be LIVE
  * 
  * @param fork - The journey fork to validate
  * @returns True if the fork can be set to LIVE status
@@ -109,8 +117,8 @@ export function canBeLive(fork: JourneyFork): boolean {
         return false;
     }
 
-    // Must have required fork properties
-    if (!fork.sourceJourneyId || !fork.clonedAt) {
+    // Must have clonedAt timestamp (all forks have this)
+    if (!fork.clonedAt) {
         return false;
     }
 
@@ -119,5 +127,6 @@ export function canBeLive(fork: JourneyFork): boolean {
         return false;
     }
 
+    // Custom journeys (no sourceJourneyId) are allowed
     return true;
 }

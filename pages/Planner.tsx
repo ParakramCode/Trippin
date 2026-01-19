@@ -7,12 +7,25 @@ import { JourneyFork } from '../src/domain/journeyFork';
 const Planner: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { plannerJourneys, renameJourney, moveStop, removeStop, addStop, updateStopNote } = useJourneys();
+  const {
+    plannerJourneys,
+    renameJourney,
+    updateJourneyLocation,
+    updateJourneyDuration,
+    updateJourneyCoverImage,
+    moveStop,
+    removeStop,
+    addStop,
+    updateStopNote
+  } = useJourneys();
 
-  // Cast as JourneyFork because plannerJourneys contains forks (Phase 3.1)
   const journey = plannerJourneys.find(j => j.id === id) as JourneyFork | undefined;
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(journey?.title || '');
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [editedLocation, setEditedLocation] = useState(journey?.location || '');
+  const [isEditingDuration, setIsEditingDuration] = useState(false);
+  const [editedDuration, setEditedDuration] = useState(journey?.duration || '');
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
 
@@ -45,6 +58,30 @@ const Planner: React.FC = () => {
   const handleTitleCancel = () => {
     setEditedTitle(journey.title);
     setIsEditingTitle(false);
+  };
+
+  const handleLocationSave = () => {
+    if (editedLocation.trim() && editedLocation !== journey.location) {
+      updateJourneyLocation(journey, editedLocation.trim());
+    }
+    setIsEditingLocation(false);
+  };
+
+  const handleLocationCancel = () => {
+    setEditedLocation(journey.location);
+    setIsEditingLocation(false);
+  };
+
+  const handleDurationSave = () => {
+    if (editedDuration.trim() && editedDuration !== journey.duration) {
+      updateJourneyDuration(journey, editedDuration.trim());
+    }
+    setIsEditingDuration(false);
+  };
+
+  const handleDurationCancel = () => {
+    setEditedDuration(journey.duration);
+    setIsEditingDuration(false);
   };
 
   const handleNoteChange = (stopId: string, note: string) => {
@@ -154,7 +191,71 @@ const Planner: React.FC = () => {
               )}
             </div>
           )}
-          <p className="text-sm font-medium text-gray-500 mt-1">{journey.location} • {journey.duration}</p>
+
+          {/* Editable Location and Duration */}
+          <div className="flex items-center gap-3 mt-2">
+            {isEditingLocation ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editedLocation}
+                  onChange={(e) => setEditedLocation(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Location"
+                  disabled={!isEditable}
+                />
+                <button onClick={handleLocationSave} className="text-emerald-600 hover:text-emerald-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <button onClick={handleLocationCancel} className="text-gray-400 hover:text-gray-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <p
+                className="text-sm font-medium text-gray-500 cursor-pointer hover:text-indigo-500"
+                onClick={() => isEditable && setIsEditingLocation(true)}
+              >
+                {journey.location}
+              </p>
+            )}
+
+            <span className="text-gray-400">•</span>
+
+            {isEditingDuration ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editedDuration}
+                  onChange={(e) => setEditedDuration(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Duration"
+                  disabled={!isEditable}
+                />
+                <button onClick={handleDurationSave} className="text-emerald-600 hover:text-emerald-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <button onClick={handleDurationCancel} className="text-gray-400 hover:text-gray-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <p
+                className="text-sm font-medium text-gray-500 cursor-pointer hover:text-indigo-500"
+                onClick={() => isEditable && setIsEditingDuration(true)}
+              >
+                {journey.duration}
+              </p>
+            )}
+          </div>
         </header>
 
         {/* Journey Image */}

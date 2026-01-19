@@ -55,6 +55,9 @@ interface JourneyContextType {
   forkJourney: (journey: Journey) => void;
   removeFromPlanner: (journey: JourneyFork) => void;
   renameJourney: (journey: JourneyFork, newTitle: string) => void;
+  updateJourneyLocation: (journey: JourneyFork, location: string) => void;
+  updateJourneyDuration: (journey: JourneyFork, duration: string) => void;
+  updateJourneyCoverImage: (journey: JourneyFork, imageUrl: string) => void;
   moveStop: (journey: JourneyFork, stopIndex: number, direction: 'up' | 'down') => void;
   removeStop: (journey: JourneyFork, stopId: string) => void;
   addStop: (journey: JourneyFork, stop: UserStop, insertIndex?: number) => void;
@@ -953,12 +956,57 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Rename a journey in the planner
   const renameJourney = useCallback((journey: JourneyFork, newTitle: string) => {
+    // Safety: Only edit if journey is not completed
+    if (journey.status === 'COMPLETED') return;
+
     setPlannerJourneys(prev => prev.map(j =>
       j.id === journey.id ? { ...j, title: newTitle } : j
     ));
-    // Update active journey if it's the one being renamed
+
     if (activeJourney?.id === journey.id) {
       setActiveJourney({ ...activeJourney, title: newTitle });
+    }
+  }, [setPlannerJourneys, activeJourney]);
+
+  // Update journey location
+  const updateJourneyLocation = useCallback((journey: JourneyFork, location: string) => {
+    // Safety: Only edit if journey is not completed
+    if (journey.status === 'COMPLETED') return;
+
+    setPlannerJourneys(prev => prev.map(j =>
+      j.id === journey.id ? { ...j, location } : j
+    ));
+
+    if (activeJourney?.id === journey.id) {
+      setActiveJourney({ ...activeJourney, location });
+    }
+  }, [setPlannerJourneys, activeJourney]);
+
+  // Update journey duration
+  const updateJourneyDuration = useCallback((journey: JourneyFork, duration: string) => {
+    // Safety: Only edit if journey is not completed
+    if (journey.status === 'COMPLETED') return;
+
+    setPlannerJourneys(prev => prev.map(j =>
+      j.id === journey.id ? { ...j, duration } : j
+    ));
+
+    if (activeJourney?.id === journey.id) {
+      setActiveJourney({ ...activeJourney, duration });
+    }
+  }, [setPlannerJourneys, activeJourney]);
+
+  // Update journey cover image
+  const updateJourneyCoverImage = useCallback((journey: JourneyFork, imageUrl: string) => {
+    // Safety: Only edit if journey is not completed
+    if (journey.status === 'COMPLETED') return;
+
+    setPlannerJourneys(prev => prev.map(j =>
+      j.id === journey.id ? { ...j, imageUrl } : j
+    ));
+
+    if (activeJourney?.id === journey.id) {
+      setActiveJourney({ ...activeJourney, imageUrl });
     }
   }, [setPlannerJourneys, activeJourney]);
 
@@ -1164,7 +1212,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
       imageUrl: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800',
       stops: [],
       moments: [],
-      sourceJourneyId: id,
+      // sourceJourneyId is undefined - custom journeys have no source
       clonedAt: Date.now(),
       isCustom: true,
       status: 'PLANNED'
@@ -1227,7 +1275,8 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // Journey management
     forkJourney, removeFromPlanner,
-    renameJourney, moveStop, removeStop, addStop, updateStopNote,
+    renameJourney, updateJourneyLocation, updateJourneyDuration, updateJourneyCoverImage,
+    moveStop, removeStop, addStop, updateStopNote,
 
     // ============================================================================
     // SEMANTIC JOURNEY STATE (Read vs Edit Separation)
