@@ -58,6 +58,10 @@ interface JourneyContextType {
   updateJourneyLocation: (journey: JourneyFork, location: string) => void;
   updateJourneyDuration: (journey: JourneyFork, duration: string) => void;
   updateJourneyCoverImage: (journey: JourneyFork, imageUrl: string) => void;
+  updateJourneyDescription: (journey: JourneyFork, description: string) => void;
+  addMoment: (journey: JourneyFork, moment: Moment) => void;
+  updateMoment: (journey: JourneyFork, momentId: string, updates: Partial<Moment>) => void;
+  deleteMoment: (journey: JourneyFork, momentId: string) => void;
   moveStop: (journey: JourneyFork, stopIndex: number, direction: 'up' | 'down') => void;
   removeStop: (journey: JourneyFork, stopId: string) => void;
   addStop: (journey: JourneyFork, stop: UserStop, insertIndex?: number) => void;
@@ -204,7 +208,6 @@ interface JourneyContextType {
   getVisitedStopsForJourney: (journey: JourneyFork) => string[];
 
   completeJourney: (journey: JourneyFork) => void;
-  isJourneyEditable: (journey: JourneyFork) => boolean;
   savedJourneyIds: Set<string>;
   isAlreadySaved: (journeyId: string) => boolean;
   createCustomJourney: () => JourneyFork;
@@ -680,6 +683,9 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * @param journey - Journey to fork (can be template or existing fork)
    */
   const forkJourney = useCallback((journey: Journey) => {
+    // NOTE: Cast to 'any' is intentional - Journey structurally satisfies JourneySource
+    // but TypeScript doesn't recognize this due to nominal typing limitations.
+    // Safe because createJourneyFork only reads from the journey object.
     const fork = createJourneyFork(journey as any, '');
     setPlannerJourneys(prev => [...prev, fork]);
   }, [setPlannerJourneys]);
@@ -948,15 +954,10 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [setPlannerJourneys, setCompletedJourneys, activeJourney, completedJourneys]);
 
-  // Check if a journey is editable (must be in planner and not completed)
-  const isJourneyEditable = useCallback((journey: JourneyFork) => {
-    // Since input is JourneyFork, we just check completion status
-    return journey.status !== 'COMPLETED';
-  }, []);
-
   // Rename a journey in the planner
   const renameJourney = useCallback((journey: JourneyFork, newTitle: string) => {
-    // Safety: Only edit if journey is not completed
+    // Safety: Title cannot be edited after completion
+    // (Unlike description and moments, which remain editable post-completion)
     if (journey.status === 'COMPLETED') return;
 
     setPlannerJourneys(prev => prev.map(j =>
@@ -1010,8 +1011,119 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [setPlannerJourneys, activeJourney]);
 
+  // Update journey description/notes
+  // NOTE: Editable even for COMPLETED journeys (allows post-trip notes)
+  const updateJourneyDescription = useCallback((journey: JourneyFork, description: string) => {
+    // Update in appropriate collection based on status
+    if (journey.status === 'COMPLETED') {
+      // Update in completedJourneys collection
+      setCompletedJourneys(prev => prev.map(j =>
+        j.id === journey.id ? { ...j, description } : j
+      ));
+    } else {
+      // Update in plannerJourneys collection
+      setPlannerJourneys(prev => prev.map(j =>
+        j.id === journey.id ? { ...j, description } : j
+      ));
+    }
+
+    // Sync activeJourney if this is the active one
+    if (activeJourney?.id === journey.id) {
+      setActiveJourney({ ...activeJourney, description });
+    }
+
+    // Sync inspectionJourney if viewing a completed journey
+    if (inspectionJourney?.id === journey.id) {
+      setInspectionJourney({ ...inspectionJourney, description });
+    }
+  }, [setPlannerJourneys, setCompletedJourneys, activeJourney, inspectionJourney]);
+
+  // Add a moment to a journey
+  // NOTE: Editable even for COMPLETED journeys (add photos/memories after trip)
+  const addMoment = useCallback((journey: JourneyFork, moment: Moment) => {
+    const currentMoments = journey.moments || [];
+    const newMoments = [...currentMoments, moment];
+
+    // Update in appropriate collection based on status
+    if (journey.status === 'COMPLETED') {
+      setCompletedJourneys(prev => prev.map(j =>
+        j.id === journey.id ? { ...j, moments: newMoments } : j
+      ));
+    } else {
+      setPlannerJourneys(prev => prev.map(j =>
+        j.id === journey.id ? { ...j, moments: newMoments } : j
+      ));
+    }
+
+    // Sync activeJourney
+    if (activeJourney?.id === journey.id) {
+      setActiveJourney({ ...activeJourney, moments: newMoments });
+    }
+
+    // Sync inspectionJourney
+    if (inspectionJourney?.id === journey.id) {
+      setInspectionJourney({ ...inspectionJourney, moments: newMoments });
+    }
+  }, [setPlannerJourneys, setCompletedJourneys, activeJourney, inspectionJourney]);
+
+  // Update a moment's properties
+  const updateMoment = useCallback((journey: JourneyFork, momentId: string, updates: Partial<Moment>) => {
+    const currentMoments = journey.moments || [];
+    const newMoments = currentMoments.map(m =>
+      m.id === momentId ? { ...m, ...updates } : m
+    );
+
+    // Update in appropriate collection based on status
+    if (journey.status === 'COMPLETED') {
+      setCompletedJourneys(prev => prev.map(j =>
+        j.id === journey.id ? { ...j, moments: newMoments } : j
+      ));
+    } else {
+      setPlannerJourneys(prev => prev.map(j =>
+        j.id === journey.id ? { ...j, moments: newMoments } : j
+      ));
+    }
+
+    // Sync activeJourney
+    if (activeJourney?.id === journey.id) {
+      setActiveJourney({ ...activeJourney, moments: newMoments });
+    }
+
+    // Sync inspectionJourney
+    if (inspectionJourney?.id === journey.id) {
+      setInspectionJourney({ ...inspectionJourney, moments: newMoments });
+    }
+  }, [setPlannerJourneys, setCompletedJourneys, activeJourney, inspectionJourney]);
+
+  // Delete a moment from a journey
+  const deleteMoment = useCallback((journey: JourneyFork, momentId: string) => {
+    const currentMoments = journey.moments || [];
+    const newMoments = currentMoments.filter(m => m.id !== momentId);
+
+    // Update in appropriate collection based on status
+    if (journey.status === 'COMPLETED') {
+      setCompletedJourneys(prev => prev.map(j =>
+        j.id === journey.id ? { ...j, moments: newMoments } : j
+      ));
+    } else {
+      setPlannerJourneys(prev => prev.map(j =>
+        j.id === journey.id ? { ...j, moments: newMoments } : j
+      ));
+    }
+
+    // Sync activeJourney
+    if (activeJourney?.id === journey.id) {
+      setActiveJourney({ ...activeJourney, moments: newMoments });
+    }
+
+    // Sync inspectionJourney
+    if (inspectionJourney?.id === journey.id) {
+      setInspectionJourney({ ...inspectionJourney, moments: newMoments });
+    }
+  }, [setPlannerJourneys, setCompletedJourneys, activeJourney, inspectionJourney]);
+
   /**
-   * Move a stop up or down in a journey (Phase 2.4: Fork-only mutation)
+   * Move a stop up or down in a journey (Fork-only mutation)
    * 
    * DEFENSIVE FORK VALIDATION:
    * Mutations are only allowed on JourneyFork instances (user-owned).
@@ -1072,7 +1184,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
    * This is a defensive layer - UI should already prevent calls on templates.
    */
   /**
-   * Remove a stop from a journey (Phase 3.4: Strict Fork Only)
+   * Remove a stop from a journey (Fork-only mutation)
    */
   const removeStop = useCallback((journey: JourneyFork, stopId: string) => {
     // Guards passed - perform mutation
@@ -1275,7 +1387,8 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // Journey management
     forkJourney, removeFromPlanner,
-    renameJourney, updateJourneyLocation, updateJourneyDuration, updateJourneyCoverImage,
+    renameJourney, updateJourneyLocation, updateJourneyDuration, updateJourneyCoverImage, updateJourneyDescription,
+    addMoment, updateMoment, deleteMoment,
     moveStop, removeStop, addStop, updateStopNote,
 
     // ============================================================================
@@ -1304,7 +1417,7 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // NEW: Per-journey visited state (use these instead)
     toggleStopVisitedInJourney, markStopVisitedInJourney, getVisitedStopsForJourney,
-    completeJourney, isJourneyEditable,
+    completeJourney,
     savedJourneyIds, isAlreadySaved,
     createCustomJourney,
     startJourney,

@@ -12,20 +12,21 @@ const Planner: React.FC = () => {
     renameJourney,
     updateJourneyLocation,
     updateJourneyDuration,
-    updateJourneyCoverImage,
+    updateJourneyDescription,
     moveStop,
     removeStop,
     addStop,
     updateStopNote
   } = useJourneys();
 
-  const journey = plannerJourneys.find(j => j.id === id) as JourneyFork | undefined;
+  const journey = plannerJourneys.find(j => j.id === id);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(journey?.title || '');
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [editedLocation, setEditedLocation] = useState(journey?.location || '');
   const [isEditingDuration, setIsEditingDuration] = useState(false);
   const [editedDuration, setEditedDuration] = useState(journey?.duration || '');
+  const [journeyDescription, setJourneyDescription] = useState(journey?.description || '');
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
 
@@ -82,6 +83,16 @@ const Planner: React.FC = () => {
   const handleDurationCancel = () => {
     setEditedDuration(journey.duration);
     setIsEditingDuration(false);
+  };
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setJourneyDescription(e.target.value);
+  };
+
+  const handleDescriptionBlur = () => {
+    if (journeyDescription !== (journey.description || '')) {
+      updateJourneyDescription(journey, journeyDescription);
+    }
   };
 
   const handleNoteChange = (stopId: string, note: string) => {
@@ -262,6 +273,22 @@ const Planner: React.FC = () => {
         <div className="mb-8 rounded-3xl overflow-hidden shadow-xl">
           <img src={journey.imageUrl} alt={journey.title} className="w-full h-64 object-cover" />
         </div>
+
+        {/* Journey Description/Notes */}
+        <section className="mb-8">
+          <h2 className="font-sans text-xl font-bold text-slate-800 mb-3">Journey Notes</h2>
+          <textarea
+            value={journeyDescription}
+            onChange={handleDescriptionChange}
+            onBlur={handleDescriptionBlur}
+            placeholder="Add your notes, budget, packing list, or any details about this journey..."
+            className="w-full min-h-[120px] p-4 border border-slate-200 rounded-2xl font-sans text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y"
+            disabled={!isEditable}
+          />
+          <p className="text-xs text-slate-400 mt-2">
+            {isEditable ? 'Changes save automatically' : 'Journey is completed - notes are view-only'}
+          </p>
+        </section>
 
         {/* Stops List */}
         <div className="space-y-4">

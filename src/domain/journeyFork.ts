@@ -83,6 +83,9 @@ export interface JourneyFork {
         };
     }>;
 
+    /** User's personal notes/description for this journey (editable even after completion) */
+    description?: string;
+
     /** Current status of this journey fork */
     status: JourneyStatus;
 
