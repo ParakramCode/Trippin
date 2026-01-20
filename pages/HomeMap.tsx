@@ -11,6 +11,8 @@ import { useJourneys } from '../context/JourneyContext';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import NavigationDrawer from '../components/NavigationDrawer';
+import NextStopFloat from '../components/NextStopFloat';
+import MemoryCaptureDock from '../components/MemoryCaptureDock';
 
 const VITE_MAPBOX_TOKEN = "pk.eyJ1IjoicGFha2kyMDA2IiwiYSI6ImNta2NibDA2eDBkZ3czZHNpZnQ2OTczbGEifQ.OHSS4eEaocDhNViaJSJ41w";
 
@@ -54,6 +56,7 @@ const HomeMap: React.FC = () => {
     const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [isRouteExpanded, setIsRouteExpanded] = useState<boolean>(false);
     const navigate = useNavigate();
 
     // Reset selected stop when journey changes
@@ -165,12 +168,18 @@ const HomeMap: React.FC = () => {
 
             <AnimatePresence mode="wait" initial={false}>
                 {journeyMode === 'NAVIGATION' ? (
-                    <NavigationDrawer
-                        key="nav-drawer"
-                        stops={currentJourney.stops}
-                        selectedStopId={selectedStopId}
-                        onSelect={handleStopFocus}
-                    />
+                    <>
+                        {/* Glassmorphic Next Stop Float */}
+                        <NextStopFloat
+                            key="next-stop"
+                            stops={currentJourney.stops}
+                            onExpand={() => setIsRouteExpanded(!isRouteExpanded)}
+                            isExpanded={isRouteExpanded}
+                        />
+
+                        {/* Glassmorphic Memory Capture Dock */}
+                        <MemoryCaptureDock key="memory-dock" />
+                    </>
                 ) : (
                     <motion.div
                         key="filmstrip"

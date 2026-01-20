@@ -9,8 +9,14 @@ import Planner from './pages/Planner';
 import Profile from './pages/Profile';
 
 import ErrorBoundary from './components/ErrorBoundary';
+import { useJourneys } from './context/JourneyContext';
 
 const App: React.FC = () => {
+  const { journeyMode } = useJourneys();
+
+  // Hide global navigation during live navigation mode
+  const showBottomNav = journeyMode !== 'NAVIGATION';
+
   return (
     <div className="bg-brand-beige min-h-screen font-sans text-brand-dark">
       <main className="pb-24">
@@ -24,7 +30,7 @@ const App: React.FC = () => {
           </Routes>
         </ErrorBoundary>
       </main>
-      <BottomNav />
+      {showBottomNav && <BottomNav />}
     </div>
   );
 };
