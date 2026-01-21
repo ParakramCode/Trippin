@@ -12,10 +12,11 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { useJourneys } from './context/JourneyContext';
 
 const App: React.FC = () => {
-  const { journeyMode } = useJourneys();
+  const { viewMode } = useJourneys();
 
-  // Hide global navigation during live navigation mode
-  const showBottomNav = journeyMode !== 'NAVIGATION';
+  // Global Navigation Suppression (v3 Design System)
+  // Hide BottomNavbar when viewMode === 'ACTIVE' for immersive navigation experience
+  const showBottomNav = viewMode !== 'ACTIVE';
 
   return (
     <div className="bg-brand-beige min-h-screen font-sans text-brand-dark">

@@ -79,10 +79,23 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
     const onMove = (evt: any) => {
         const map = evt.target;
         const b = map.getBounds();
-        setViewState({
-            bounds: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
-            zoom: map.getZoom()
-        });
+        const newBounds: [number, number, number, number] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+        const newZoom = map.getZoom();
+
+        // Equality check: Only update if values actually changed
+        // Prevents infinite render loop
+        if (
+            viewState.bounds[0] !== newBounds[0] ||
+            viewState.bounds[1] !== newBounds[1] ||
+            viewState.bounds[2] !== newBounds[2] ||
+            viewState.bounds[3] !== newBounds[3] ||
+            viewState.zoom !== newZoom
+        ) {
+            setViewState({
+                bounds: newBounds,
+                zoom: newZoom
+            });
+        }
     };
 
     const handleClusterClick = (clusterId: number, latitude: number, longitude: number) => {
