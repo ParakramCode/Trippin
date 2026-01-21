@@ -56,6 +56,24 @@ const HomeMap: React.FC = () => {
         };
     }, []);
 
+    // ============================================================================
+    // SCREEN-SCOPED SCROLL LOCK
+    // ============================================================================
+    // Lock page scrolling ONLY while this map screen is mounted
+    // Cleanup ensures scroll is restored when navigating to other screens
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        const originalHeight = document.body.style.height;
+
+        document.body.style.overflow = 'hidden';
+        document.body.style.height = '100vh';
+
+        return () => {
+            document.body.style.overflow = originalOverflow;
+            document.body.style.height = originalHeight;
+        };
+    }, []);
+
     // Reset selected stop when journey changes
     useEffect(() => {
         if (currentJourney?.stops && currentJourney.stops.length > 0) {
@@ -113,12 +131,23 @@ const HomeMap: React.FC = () => {
         return null;
     }
 
+    // ============================================================================
+    // SCROLL PREVENTION FOR OVERLAYS
+    // ============================================================================
+    // Prevent wheel events on overlays from propagating to map/document
+    // Map retains scroll zoom, overlays block scroll propagation
+    const stopWheel = (e: React.WheelEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
     return (
         /* 
-          ScreenRoot: position relative, height 100vh
-          Top-level container for entire Live Journey screen
+          ScreenRoot: position FIXED, inset 0
+          Must be fixed (not relative) to remove from document flow
+          This prevents any scroll-based layout participation
         */
-        <div style={{ position: 'relative', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+        <div style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
 
             {/* 
               MapLayer: position absolute; top 0; left 0; right 0; bottom 0
@@ -142,6 +171,7 @@ const HomeMap: React.FC = () => {
             {journeyMode === 'NAVIGATION' && (
                 <button
                     onClick={handleExitLiveNavigation}
+                    onWheel={stopWheel}
                     className="absolute top-6 left-6 z-[1001] p-2 text-slate-700/80 hover:text-slate-900 transition-colors rounded-full hover:bg-white/20 backdrop-blur-sm"
                     aria-label="Exit navigation"
                 >
@@ -186,7 +216,7 @@ const HomeMap: React.FC = () => {
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 20, pointerEvents: 'none' }}
                 >
-                    <div style={{ pointerEvents: 'auto' }}>
+                    <div onWheel={stopWheel} style={{ pointerEvents: 'auto' }}>
                         <Filmstrip
                             stops={currentJourney.stops}
                             selectedStopId={selectedStopId}

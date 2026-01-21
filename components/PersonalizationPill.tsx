@@ -57,6 +57,12 @@ const PersonalizationPill: React.FC = () => {
         }
     };
 
+    // Prevent wheel events from scrolling the document (screen-scoped)
+    const stopWheel = (e: React.WheelEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
     return (
         <>
             {/* 
@@ -70,6 +76,7 @@ const PersonalizationPill: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 100 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                onWheel={stopWheel}
                 style={{
                     position: 'fixed',
                     left: 0,
@@ -78,6 +85,7 @@ const PersonalizationPill: React.FC = () => {
                     padding: '16px',
                     paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
                     zIndex: 1000,
+                    pointerEvents: 'auto',
                 }}
             >
                 <div
