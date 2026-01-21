@@ -28,6 +28,7 @@ const HomeMap: React.FC = () => {
         startJourney,
         currentJourney,
         isReadOnlyJourney,
+        stopJourney,
     } = useJourneys();
 
     const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
@@ -74,6 +75,16 @@ const HomeMap: React.FC = () => {
         forkJourney(currentJourney);
         setToastMessage("Added to My Journeys!");
         setTimeout(() => setToastMessage(null), 2000);
+    };
+
+    const handleExitLiveNavigation = () => {
+        // Exit live navigation by stopping the journey
+        // This transitions journeyMode away from NAVIGATION
+        // BottomNav will reappear automatically via derived state in App.tsx
+        if (activeJourney) {
+            stopJourney(activeJourney);
+        }
+        navigate(-1);
     };
 
     const handleStopFocus = (stop: Stop) => {
@@ -123,6 +134,22 @@ const HomeMap: React.FC = () => {
                     onStopSelect={handleStopFocus}
                 />
             </div>
+
+            {/* 
+              Minimalist Back Button
+              Only shown in NAVIGATION mode - exits live navigation
+            */}
+            {journeyMode === 'NAVIGATION' && (
+                <button
+                    onClick={handleExitLiveNavigation}
+                    className="absolute top-6 left-6 z-[1001] p-2 text-slate-700/80 hover:text-slate-900 transition-colors rounded-full hover:bg-white/20 backdrop-blur-sm"
+                    aria-label="Exit navigation"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                </button>
+            )}
 
             {/* 
               NextStopCard: position absolute; top env(safe-area-inset-top)

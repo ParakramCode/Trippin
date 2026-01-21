@@ -53,6 +53,9 @@ const NextStopFloat: React.FC<NextStopFloatProps> = ({ stops, onExpand, isExpand
     };
 
     const handleEndNavigation = () => {
+        // End navigation by stopping the journey
+        // This transitions journeyMode away from NAVIGATION
+        // BottomNav will reappear automatically via derived state in App.tsx
         if (activeJourney) {
             stopJourney(activeJourney);
         }
@@ -163,8 +166,8 @@ const NextStopFloat: React.FC<NextStopFloatProps> = ({ stops, onExpand, isExpand
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${stop.visited
-                                                    ? 'bg-emerald-500 border-2 border-emerald-400'
-                                                    : 'bg-slate-200 border-2 border-slate-300'
+                                                ? 'bg-emerald-500 border-2 border-emerald-400'
+                                                : 'bg-slate-200 border-2 border-slate-300'
                                                 }`}>
                                                 {stop.visited ? (
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white">
