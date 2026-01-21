@@ -61,12 +61,6 @@ const NextStopFloat: React.FC<NextStopFloatProps> = ({ stops, onExpand, isExpand
         }
     };
 
-    // Prevent wheel events from scrolling the document (screen-scoped)
-    const stopWheel = (e: React.WheelEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-    };
-
     return (
         <motion.div
             className="absolute top-6 left-6 right-6 z-[100]"
@@ -74,8 +68,6 @@ const NextStopFloat: React.FC<NextStopFloatProps> = ({ stops, onExpand, isExpand
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            onWheel={stopWheel}
-            style={{ pointerEvents: 'auto' }}
         >
             <GlassCard className="rounded-2xl overflow-hidden shadow-xl">
                 {/* Header with End Navigation button */}
