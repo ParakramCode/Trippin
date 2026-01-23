@@ -1,7 +1,7 @@
-
-import React from 'react';
-import { motion, PanInfo } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, useScroll, AnimatePresence } from 'framer-motion';
 import { Stop } from '../types';
+import { useJourneys } from '../context/JourneyContext';
 
 interface DestinationDetailProps {
     stop: Stop;
@@ -9,134 +9,259 @@ interface DestinationDetailProps {
 }
 
 const DestinationDetail: React.FC<DestinationDetailProps> = ({ stop, onClose }) => {
-    const handleDragEnd = (_: any, info: PanInfo) => {
-        // If dragged down more than 100px, close the sheet
-        if (info.offset.y > 100) {
-            onClose();
-        }
-    };
+    const { setIsInspectingDestination } = useJourneys();
 
-    // Get gallery images, fallback to imageUrl if gallery is empty
+    // ============================================================================
+    // STORIES CAROUSEL
+    // ============================================================================
+
     const galleryImages = stop.gallery && stop.gallery.length > 0
         ? stop.gallery
         : [stop.imageUrl];
 
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+    const handleLeftTap = () => {
+        if (currentImageIndex > 0) {
+            setCurrentImageIndex(currentImageIndex - 1);
+        }
+    };
+
+    const handleRightTap = () => {
+        if (currentImageIndex < galleryImages.length - 1) {
+            setCurrentImageIndex(currentImageIndex + 1);
+        }
+    };
+
+    // ============================================================================
+    // SCROLL TRACKING - For tap zone management only
+    // ============================================================================
+
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+    const { scrollY } = useScroll({ container: scrollContainerRef });
+
+    // Disable tap zones when scrolled (content is covering image)
+    const [tapZonesEnabled, setTapZonesEnabled] = useState(true);
+
+    useEffect(() => {
+        const unsubscribe = scrollY.onChange((latest) => {
+            setTapZonesEnabled(latest < 100);
+        });
+        return () => unsubscribe();
+    }, [scrollY]);
+
+    // ============================================================================
+    // NAV SUPPRESSION
+    // ============================================================================
+
+    useEffect(() => {
+        setIsInspectingDestination(true);
+        return () => {
+            setIsInspectingDestination(false);
+        };
+    }, [setIsInspectingDestination]);
+
+    const handleClose = () => {
+        setIsInspectingDestination(false);
+        onClose();
+    };
+
     return (
-        <>
-            {/* Backdrop */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={onClose}
-                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
-            />
+        <motion.div
+            ref={scrollContainerRef}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 overflow-y-auto h-screen bg-black"
+            style={{ overscrollBehavior: 'contain' }}
+        >
+            {/* ========================================================================
+                FIXED BACKGROUND - Stories Carousel with Bottom Gradient
+            ======================================================================== */}
 
-            {/* Bottom Sheet */}
-            <motion.div
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                drag="y"
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={0.2}
-                onDragEnd={handleDragEnd}
-                className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] shadow-2xl max-w-2xl mx-auto overflow-hidden"
-                style={{ height: '75vh' }}
-            >
-                {/* Drag Handle - Primary dismissal gesture */}
-                <div className="flex justify-center pt-4 pb-3 bg-white relative z-10">
-                    <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
-                </div>
+            <div className="fixed inset-0 z-0">
+                <AnimatePresence mode="wait">
+                    <motion.img
+                        key={currentImageIndex}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        src={galleryImages[currentImageIndex]}
+                        alt={stop.name}
+                        className="w-full h-full object-cover"
+                    />
+                </AnimatePresence>
 
-                {/* Scrollable Content */}
-                <div className="h-full overflow-y-auto">
-                    {/* Multi-Image Gallery with Overlay Content */}
-                    <div className="relative w-full h-64 mb-6">
-                        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide w-full h-full">
-                            {galleryImages.map((imageUrl, index) => (
-                                <div
-                                    key={index}
-                                    className="relative snap-center shrink-0 w-[85vw] h-full mr-4 last:mr-0"
-                                    style={{ maxWidth: '600px' }}
-                                >
-                                    <img
-                                        src={imageUrl}
-                                        alt={`${stop.name} ${index + 1}`}
-                                        className="w-full h-full object-cover rounded-2xl"
-                                    />
+                {/* Bottom gradient for text legibility */}
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 40%)'
+                    }}
+                />
+            </div>
 
-                                    {/* Gradient Overlay */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent rounded-2xl" />
-
-                                    {/* Content Over First Image Only */}
-                                    {index === 0 && (
-                                        <div className="absolute bottom-0 left-0 right-0 p-6">
-                                            <h2 className="text-3xl font-serif font-bold text-white mb-3 drop-shadow-lg">
-                                                {stop.name}
-                                            </h2>
-
-                                            {/* Activity Chips */}
-                                            {stop.activities && stop.activities.length > 0 && (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {stop.activities.slice(0, 3).map((activity, actIndex) => (
-                                                        <span
-                                                            key={actIndex}
-                                                            className="bg-white/20 backdrop-blur-md text-white border border-white/30 px-3 py-1 rounded-full text-[10px] font-sans font-medium tracking-wide uppercase shadow-lg"
-                                                        >
-                                                            {activity}
-                                                        </span>
-                                                    ))}
-                                                    {stop.activities.length > 3 && (
-                                                        <span className="bg-white/20 backdrop-blur-md text-white border border-white/30 px-3 py-1 rounded-full text-[10px] font-sans font-medium tracking-wide uppercase shadow-lg">
-                                                            +{stop.activities.length - 3} more
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+            {/* Instagram Stories progress bars - FIXED at top */}
+            {galleryImages.length > 1 && (
+                <div className="fixed top-6 left-4 right-4 z-20 flex gap-1.5">
+                    {galleryImages.map((_, index) => (
+                        <div
+                            key={index}
+                            className="flex-1 h-1 rounded-full bg-white/30 overflow-hidden"
+                        >
+                            <motion.div
+                                initial={false}
+                                animate={{
+                                    width: index === currentImageIndex ? '100%'
+                                        : index < currentImageIndex ? '100%'
+                                            : '0%'
+                                }}
+                                transition={{ duration: 0.3 }}
+                                className="h-full bg-white rounded-full"
+                            />
                         </div>
-                    </div>
-
-                    {/* Content Below Gallery */}
-                    <div className="px-6 pb-8">
-                        {/* All Activities (Expanded List) */}
-                        {stop.activities && stop.activities.length > 0 && (
-                            <div className="mb-6">
-                                <h3 className="text-sm font-sans font-bold text-slate-700 mb-3 uppercase tracking-wide">Things to Do</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {stop.activities.map((activity, index) => (
-                                        <span
-                                            key={index}
-                                            className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-[10px] font-sans font-medium tracking-wide uppercase"
-                                        >
-                                            {activity}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Story / Description */}
-                        {stop.description && (
-                            <div className="mb-6">
-                                <h3 className="text-sm font-sans font-bold text-slate-700 mb-3 uppercase tracking-wide">About this Place</h3>
-                                <p className="text-slate-600 font-serif text-base leading-relaxed">
-                                    {stop.description}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Spacer for bottom padding */}
-                        <div className="h-20" />
-                    </div>
+                    ))}
                 </div>
-            </motion.div>
-        </>
+            )}
+
+            {/* Instagram tap-to-next zones */}
+            {tapZonesEnabled && (
+                <div className="fixed inset-0 z-10 flex pointer-events-auto">
+                    <div
+                        onClick={handleLeftTap}
+                        className="flex-1"
+                        style={{ cursor: currentImageIndex > 0 ? 'pointer' : 'default', opacity: 0 }}
+                    />
+                    <div
+                        onClick={handleRightTap}
+                        className="flex-1"
+                        style={{ cursor: currentImageIndex < galleryImages.length - 1 ? 'pointer' : 'default', opacity: 0 }}
+                    />
+                </div>
+            )}
+
+            {/* Close Button - FIXED */}
+            <button
+                onClick={handleClose}
+                className="fixed top-6 left-6 z-30 w-11 h-11 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center shadow-xl hover:bg-white/30 transition-colors"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2.5}
+                    stroke="currentColor"
+                    className="w-5 h-5 text-white"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            {/* Spacer to push content down to 70vh */}
+            <div className="h-[70vh] pointer-events-none" />
+
+            {/* ========================================================================
+                TITLE - Pure White, positioned at bottom
+            ======================================================================== */}
+
+            <div
+                className="relative z-20 px-6 pb-4"
+                style={{ marginTop: '-80px' }}
+            >
+                <h1 className="text-5xl font-sans font-bold text-white mb-3 drop-shadow-lg">
+                    {stop.name}
+                </h1>
+
+                {/* Activity Chips */}
+                {stop.activities && stop.activities.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                        {stop.activities.slice(0, 3).map((activity, actIndex) => (
+                            <span
+                                key={actIndex}
+                                className="bg-white/25 backdrop-blur-md text-white border border-white/40 px-3 py-1.5 rounded-full text-xs font-sans font-semibold tracking-wide shadow-lg"
+                            >
+                                {activity}
+                            </span>
+                        ))}
+                        {stop.activities.length > 3 && (
+                            <span className="bg-white/25 backdrop-blur-md text-white border border-white/40 px-3 py-1.5 rounded-full text-xs font-sans font-semibold tracking-wide shadow-lg">
+                                +{stop.activities.length - 3} more
+                            </span>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* ========================================================================
+                TRANSPARENT GLASSMORPHIC SHEET - ALL TEXT WHITE
+            ======================================================================== */}
+
+            <div
+                className="relative z-20 min-h-screen bg-white/10 backdrop-blur-xl rounded-t-[32px] border-t border-white/20"
+                style={{ overscrollBehavior: 'contain' }}
+            >
+                {/* No pull handle - clean interface */}
+
+                <div className="px-6 pt-6 pb-32">
+                    {/* ABOUT THIS PLACE - ALL TEXT WHITE */}
+                    {stop.description && (
+                        <div className="mb-6">
+                            <h3 className="text-xs font-sans font-bold text-white mb-2 uppercase tracking-wider">
+                                About this Place
+                            </h3>
+                            <p className="text-white font-sans text-base leading-relaxed">
+                                {stop.description}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* LOCATION - ALL TEXT WHITE */}
+                    <div className="mb-6">
+                        <h3 className="text-xs font-sans font-bold text-white mb-2 uppercase tracking-wider">
+                            Location
+                        </h3>
+                        <p className="text-white font-mono text-sm">
+                            {stop.coordinates[1].toFixed(4)}°N, {stop.coordinates[0].toFixed(4)}°E
+                        </p>
+                    </div>
+
+                    {/* THINGS TO DO - ALL TEXT WHITE */}
+                    {stop.activities && stop.activities.length > 0 && (
+                        <div className="mb-6">
+                            <h3 className="text-xs font-sans font-bold text-white mb-2 uppercase tracking-wider">
+                                Things to Do
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                                {stop.activities.map((activity, index) => (
+                                    <span
+                                        key={index}
+                                        className="bg-white/20 backdrop-blur-sm text-white border border-white/30 px-3 py-1.5 rounded-full text-xs font-sans font-medium tracking-wide"
+                                    >
+                                        {activity}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* GALLERY - ALL TEXT WHITE */}
+                    {galleryImages.length > 1 && (
+                        <div className="mb-6">
+                            <h3 className="text-xs font-sans font-bold text-white mb-2 uppercase tracking-wider">
+                                Gallery
+                            </h3>
+                            <p className="text-white font-sans text-sm">
+                                {galleryImages.length} photos • Tap sides to browse
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Extra scroll space */}
+                    <div className="h-64" />
+                </div>
+            </div>
+        </motion.div>
     );
 };
 

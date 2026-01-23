@@ -12,11 +12,13 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { useJourneys } from './context/JourneyContext';
 
 const App: React.FC = () => {
-  const { journeyMode } = useJourneys();
+  const { journeyMode, isInspectingDestination } = useJourneys();
 
-  // Derive live navigation state from journeyMode (single source of truth)
-  // BottomNav is hidden ONLY when user is in active live navigation
+  // Hide BottomNav during:
+  // 1. Live navigation (journeyMode === 'NAVIGATION')
+  // 2. Destination inspection (full-screen immersive mode)
   const isLiveNavigation = journeyMode === 'NAVIGATION';
+  const hideBottomNav = isLiveNavigation || isInspectingDestination;
 
   return (
     <div className="bg-brand-beige min-h-screen font-sans text-brand-dark">
@@ -31,7 +33,7 @@ const App: React.FC = () => {
           </Routes>
         </ErrorBoundary>
       </main>
-      {!isLiveNavigation && <BottomNav />}
+      {!hideBottomNav && <BottomNav />}
     </div>
   );
 };

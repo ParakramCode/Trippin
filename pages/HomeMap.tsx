@@ -12,9 +12,13 @@ import { useJourneys } from '../context/JourneyContext';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { createPortal } from "react-dom";
+import { getDistanceFromLatLonInKm } from '../utils/geometry';
 
 
 const VITE_MAPBOX_TOKEN = "pk.eyJ1IjoicGFha2kyMDA2IiwiYSI6ImNta2NibDA2eDBkZ3czZHNpZnQ2OTczbGEifQ.OHSS4eEaocDhNViaJSJ41w";
+
+// Proximity threshold for automatic stop resolution (meters)
+const PROXIMITY_THRESHOLD_METERS = 0.075; // 75 meters converted to km
 
 const HomeMap: React.FC = () => {
     const mapRef = useRef<MapRef>(null);
@@ -29,12 +33,18 @@ const HomeMap: React.FC = () => {
         currentJourney,
         isReadOnlyJourney,
         stopJourney,
+        userLocation,
+        markStopVisitedInJourney,
     } = useJourneys();
 
     const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [isRouteExpanded, setIsRouteExpanded] = useState<boolean>(false);
+
+    // Active stop resolution state
+    const [currentActiveStop, setCurrentActiveStop] = useState<Stop | null>(null);
+    const [distanceToActiveStop, setDistanceToActiveStop] = useState<number | null>(null);
 
     // Portal root management - create overlay-root if it doesn't exist
     const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
@@ -73,6 +83,46 @@ const HomeMap: React.FC = () => {
             document.body.style.height = originalHeight;
         };
     }, []);
+
+    // ============================================================================
+    // AUTOMATIC ACTIVE-STOP RESOLUTION
+    // ============================================================================
+    // Monitor user proximity to stops during live navigation
+    // Automatically mark stops as visited when within 75m threshold
+    useEffect(() => {
+        // Only run during live navigation mode
+        if (journeyMode !== 'NAVIGATION' || !activeJourney || !currentJourney?.stops || !userLocation) {
+            setCurrentActiveStop(null);
+            setDistanceToActiveStop(null);
+            return;
+        }
+
+        // Find first unvisited stop (active stop)
+        const activeStop = currentJourney.stops.find(stop => !stop.visited);
+
+        if (!activeStop) {
+            setCurrentActiveStop(null);
+            setDistanceToActiveStop(null);
+            return;
+        }
+
+        // Calculate distance to active stop
+        const distanceKm = getDistanceFromLatLonInKm(
+            userLocation[1], // user lat
+            userLocation[0], // user lng
+            activeStop.coordinates[1], // stop lat
+            activeStop.coordinates[0]  // stop lng
+        );
+
+        // Update state
+        setCurrentActiveStop(activeStop);
+        setDistanceToActiveStop(distanceKm * 1000); // Convert to meters
+
+        // Auto-mark as visited if within threshold
+        if (distanceKm <= PROXIMITY_THRESHOLD_METERS) {
+            markStopVisitedInJourney(activeJourney, activeStop.id);
+        }
+    }, [journeyMode, activeJourney, currentJourney?.stops, userLocation, markStopVisitedInJourney]);
 
     // Reset selected stop when journey changes
     useEffect(() => {

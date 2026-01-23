@@ -220,6 +220,22 @@ interface JourneyContextType {
    * Use this instead of setIsFollowing(false).
    */
   stopJourney: (journey: JourneyFork) => void;
+
+  // ============================================================================
+  // DESTINATION INSPECTION MODE (Phase 3.8)
+  // ============================================================================
+
+  /**
+   * Destination Inspection State
+   * 
+   * When true, indicates user is viewing a destination in full-screen mode.
+   * Used to hide global navigation (BottomNav) for immersive experience.
+   * 
+   * Set to true: When DestinationDetail opens
+   * Set to false: When DestinationDetail closes
+   */
+  isInspectingDestination: boolean;
+  setIsInspectingDestination: (isInspecting: boolean) => void;
 }
 
 const JourneyContext = createContext<JourneyContextType | undefined>(undefined);
@@ -809,6 +825,15 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, []));
 
+  // ============================================================================
+  // DESTINATION INSPECTION STATE (Phase 3.8)
+  // ============================================================================
+
+  /**
+   * Tracks whether user is viewing a destination in full-screen mode
+   * Used to hide BottomNav for immersive experience
+   */
+  const [isInspectingDestination, setIsInspectingDestination] = useState<boolean>(false);
 
 
   /**
@@ -1421,7 +1446,11 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
     savedJourneyIds, isAlreadySaved,
     createCustomJourney,
     startJourney,
-    stopJourney  // ✅ Phase 3.2: Stop navigation
+    stopJourney,  // ✅ Phase 3.2: Stop navigation
+
+    // Destination inspection (Phase 3.8)
+    isInspectingDestination,
+    setIsInspectingDestination
   };
 
   return (
