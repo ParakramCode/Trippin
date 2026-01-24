@@ -210,7 +210,7 @@ interface JourneyContextType {
   completeJourney: (journey: JourneyFork) => void;
   savedJourneyIds: Set<string>;
   isAlreadySaved: (journeyId: string) => boolean;
-  createCustomJourney: () => JourneyFork;
+  createCustomJourney: (name?: string) => JourneyFork;
   /** Start navigation mode for a journey */
   startJourney: (journey: JourneyFork) => void;
   /**
@@ -1339,11 +1339,11 @@ export const JourneyProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [savedJourneyIds]);
 
   // Create a new custom journey
-  const createCustomJourney = useCallback((): JourneyFork => {
+  const createCustomJourney = useCallback((name?: string): JourneyFork => {
     const id = `custom-${Date.now()}`;
     const newJourney: JourneyFork = {
       id,
-      title: 'My Custom Journey',
+      title: name || 'My Custom Journey',
       location: 'Add location...',
       duration: '1 Day',
       imageUrl: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800',

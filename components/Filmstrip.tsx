@@ -64,6 +64,29 @@ const Filmstrip: React.FC<FilmstripProps> = ({ stops, selectedStopId, onSelect, 
         }
     };
 
+    // Show empty state if no stops
+    if (stops.length === 0) {
+        return (
+            <div className="fixed bottom-24 left-0 right-0 z-40 h-36 flex items-center justify-center px-4">
+                <div className="w-full max-w-sm h-full bg-gradient-to-br from-white/80 via-indigo-50/80 to-purple-50/80 backdrop-blur-xl border-2 border-dashed border-indigo-300/50 rounded-[32px] shadow-2xl flex items-center justify-center">
+                    <div className="text-center px-6">
+                        <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full mb-3 shadow-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-7 h-7">
+                                <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <h3 className="text-slate-800 text-lg font-serif font-bold mb-1">
+                            Add your first stop
+                        </h3>
+                        <p className="text-slate-500 text-xs font-sans leading-relaxed">
+                            Tap anywhere on the map to begin
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="fixed bottom-24 left-0 right-0 z-40 h-36 pointer-events-none flex items-center justify-center">
             {/* 

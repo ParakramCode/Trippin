@@ -5,6 +5,9 @@ import Filmstrip from '../components/Filmstrip';
 import DestinationDetail from '../components/DestinationDetail';
 import NextStopFloat from '../components/NextStopFloat';
 import PersonalizationPill from '../components/PersonalizationPill';
+import SearchBar from '../components/SearchBar';
+import StopPreviewCard from '../components/StopPreviewCard';
+import { UserStop } from '../src/domain/stop';
 import { Stop } from '../types';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import mapboxgl from 'mapbox-gl';
@@ -35,10 +38,16 @@ const HomeMap: React.FC = () => {
         stopJourney,
         userLocation,
         markStopVisitedInJourney,
+        addStop
     } = useJourneys();
 
     const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
+
+    // Stop Creation / Preview State
+    const [previewStop, setPreviewStop] = useState<{ coordinates: [number, number], name: string } | null>(null);
+    const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [isRouteExpanded, setIsRouteExpanded] = useState<boolean>(false);
 
@@ -135,8 +144,15 @@ const HomeMap: React.FC = () => {
                 });
                 mapRef.current.fitBounds(bounds, { padding: 50, duration: 2000 });
             }
+        } else if (currentJourney && userLocation && mapRef.current) {
+            // If journey has no stops yet, center on user location
+            mapRef.current.flyTo({
+                center: [userLocation[0], userLocation[1]],
+                zoom: 12,
+                duration: 2000
+            });
         }
-    }, [currentJourney]);
+    }, [currentJourney, userLocation]);
 
     const handleAddToJourneys = () => {
         if (!currentJourney) return;
@@ -160,12 +176,110 @@ const HomeMap: React.FC = () => {
     };
 
     const handleStopClick = (stop: Stop) => {
+        // If we click a real stop, dismiss any preview
+        setPreviewStop(null);
         setSelectedStop(stop);
     };
 
-    // Redirect if no journey to display
+    // ============================================================================
+    // UNIFIED STOP CREATION FLOW
+    // ============================================================================
+    // 1. Search Result -> Preview Pin + FlyTo
+    // 2. Map Tap -> Preview Pin (Reverse Geocode)
+    // 3. Confirm -> Add Stop
+
+    // Handle persistent Search Bar selection
+    const handleSearchSelect = (result: any) => {
+        const [lng, lat] = result.center;
+
+        // 1. Set Preview Immediately (replaces any existing)
+        setPreviewStop({
+            coordinates: [lng, lat],
+            name: result.text || result.place_name
+        });
+
+        // 2. Fly to location
+        if (mapRef.current) {
+            mapRef.current.flyTo({
+                center: [lng, lat],
+                zoom: 14,
+                duration: 2000
+            });
+        }
+
+        // 3. Dismiss any engaged real stop details
+        setSelectedStop(null);
+    };
+
+    // Handle Map Tap (Reverse Geocode)
+    const handleMapClick = async (e: mapboxgl.MapLayerMouseEvent) => {
+        // Prevent if clicking on existing UI/Stop is handled by stop event propagation?
+        // Mapbox simple click usually fires even if marker clicked unless stopPropagation called on marker.
+        // Markers in JourneyMap allow propagation? No, they call stopPropagation().
+        // So this will only fire on empty map space.
+
+        const { lng, lat } = e.lngLat;
+        setIsPreviewLoading(true);
+
+        // Optimistic update: Show pin immediately at tap location, name loading...
+        setPreviewStop({
+            coordinates: [lng, lat],
+            name: "Loading location..."
+        });
+        setSelectedStop(null); // Dismiss existing stop detail if open
+
+        try {
+            const response = await fetch(
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${VITE_MAPBOX_TOKEN}`
+            );
+            const data = await response.json();
+
+            if (data.features && data.features.length > 0) {
+                // Prefer 'poi' or 'address', fallback to first feature
+                const feature = data.features.find((f: any) => f.place_type.includes('poi')) || data.features[0];
+                setPreviewStop({
+                    coordinates: [lng, lat], // Keep original tap coords or snap to POI? Keep tap for precision.
+                    name: feature.text || feature.place_name
+                });
+            } else {
+                setPreviewStop({
+                    coordinates: [lng, lat],
+                    name: "Dropped Pin"
+                });
+            }
+        } catch (err) {
+            console.error("Reverse geocode failed", err);
+            setPreviewStop({
+                coordinates: [lng, lat],
+                name: "Dropped Pin"
+            });
+        } finally {
+            setIsPreviewLoading(false);
+        }
+    };
+
+    // Handle "Add Stop" Confirmation
+    const handleAddStop = () => {
+        if (!previewStop || !activeJourney) return;
+
+        const newStop: UserStop = {
+            id: `stop-${Date.now()}`,
+            name: previewStop.name,
+            coordinates: previewStop.coordinates,
+            imageUrl: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&q=80', // Default placeholder
+            description: 'Added from map',
+
+        };
+
+        addStop(activeJourney, newStop);
+        setPreviewStop(null); // Clear preview after adding
+        setToastMessage("Stop added to journey!");
+        setTimeout(() => setToastMessage(null), 2000);
+    };
+
+    // Redirect only if no journey exists at all
     useEffect(() => {
-        if (!currentJourney || !currentJourney.stops) {
+        if (!currentJourney) {
             navigate('/', { replace: true });
         }
     }, [currentJourney, navigate]);
@@ -177,7 +291,7 @@ const HomeMap: React.FC = () => {
         }
     }, [isReadOnlyJourney, activeJourney, journeyMode, startJourney]);
 
-    if (!currentJourney || !currentJourney.stops) {
+    if (!currentJourney) {
         return null;
     }
 
@@ -206,11 +320,13 @@ const HomeMap: React.FC = () => {
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
                 <JourneyMap
                     ref={mapRef}
-                    stops={currentJourney.stops}
-                    moments={currentJourney.moments}
+                    stops={currentJourney.stops || []}
+                    moments={currentJourney.moments || []}
                     mapboxToken={VITE_MAPBOX_TOKEN}
                     selectedStopId={selectedStopId}
                     onStopSelect={handleStopFocus}
+                    onMapClick={handleMapClick}
+                    previewStop={previewStop}
                 />
             </div>
 
@@ -232,12 +348,26 @@ const HomeMap: React.FC = () => {
             )}
 
             {/* 
+              Persistent Search Bar
+              Always visible (except live Nav potentially, but prompt says "persistent")
+              Let's keep it visible unless Destination Inspection mode?
+              Actually, prompt says "Persistent search bar should be fixed at the top".
+            */}
+            {journeyMode !== 'NAVIGATION' && (
+                <SearchBar
+                    mapboxToken={VITE_MAPBOX_TOKEN}
+                    onSelect={handleSearchSelect}
+                    isPreviewActive={!!previewStop}
+                />
+            )}
+
+            {/* 
               NextStopCard: position absolute; top env(safe-area-inset-top)
               Only shown in NAVIGATION mode
             */}
             {journeyMode === 'NAVIGATION' && (
                 <NextStopFloat
-                    stops={currentJourney.stops}
+                    stops={currentJourney.stops || []}
                     onExpand={() => setIsRouteExpanded(!isRouteExpanded)}
                     isExpanded={isRouteExpanded}
                 />
@@ -258,7 +388,10 @@ const HomeMap: React.FC = () => {
             {/* 
               Filmstrip: Shown when NOT in navigation mode
             */}
-            {journeyMode !== 'NAVIGATION' && (
+            {/* 
+              Filmstrip: Shown when NOT in navigation mode AND no preview is active
+            */}
+            {journeyMode !== 'NAVIGATION' && !previewStop && (
                 <motion.div
                     initial={{ y: 200, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
@@ -268,7 +401,7 @@ const HomeMap: React.FC = () => {
                 >
                     <div onWheel={stopWheel} style={{ pointerEvents: 'auto' }}>
                         <Filmstrip
-                            stops={currentJourney.stops}
+                            stops={currentJourney.stops || []}
                             selectedStopId={selectedStopId}
                             onSelect={handleStopFocus}
                             onCardClick={handleStopClick}
@@ -276,6 +409,20 @@ const HomeMap: React.FC = () => {
                     </div>
                 </motion.div>
             )}
+
+            {/* 
+               Stop Preview Card (Confirmation)
+               Replaces filmstrip temporarily if active
+            */}
+            <AnimatePresence>
+                {previewStop && (
+                    <StopPreviewCard
+                        name={previewStop.name}
+                        onAdd={handleAddStop}
+                        isLoading={isPreviewLoading}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* 
               Top Right Controls: Author & Add Button

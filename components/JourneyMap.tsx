@@ -16,9 +16,11 @@ interface JourneyMapProps {
     mapboxToken: string;
     selectedStopId: string | null;
     onStopSelect: (stop: Stop) => void;
+    onMapClick?: (e: mapboxgl.MapLayerMouseEvent) => void;
+    previewStop?: { coordinates: [number, number] } | null;
 }
 
-const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], mapboxToken, selectedStopId, onStopSelect }, ref) => {
+const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], mapboxToken, selectedStopId, onStopSelect, onMapClick, previewStop }, ref) => {
     /**
      * COMPONENT MIGRATION: Per-Journey Visited State
      * 
@@ -285,6 +287,7 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                 mapboxAccessToken={mapboxToken}
                 padding={journeyMode === 'NAVIGATION' ? { left: 340, top: 20, bottom: 20, right: 20 } : { left: 0, top: 0, bottom: 0, right: 0 }}
                 onMove={onMove}
+                onClick={onMapClick}
             >
                 {routeGeoJSON && (
                     <Source id="route-source" type="geojson" data={routeGeoJSON}>
@@ -379,6 +382,28 @@ const JourneyMap = forwardRef<MapRef, JourneyMapProps>(({ stops, moments = [], m
                         </motion.div>
                     </Marker>
                 ))}
+                {previewStop && (
+                    <Marker
+                        longitude={previewStop.coordinates[0]}
+                        latitude={previewStop.coordinates[1]}
+                        anchor="bottom"
+                    >
+                        <div className="relative flex flex-col items-center pointer-events-none">
+                            {/* Pulsing Dot */}
+                            <div className="absolute -inset-4 bg-rose-500/30 rounded-full animate-ping"></div>
+                            {/* Pin Head */}
+                            <div className="relative w-8 h-8 bg-rose-600 rounded-full shadow-lg flex items-center justify-center border-2 border-white ring-2 ring-rose-500/20 transform -translate-y-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-5 h-5">
+                                    <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            {/* Pin Leg */}
+                            <div className="w-[2px] h-3 bg-rose-800/50 mt-[-1px]"></div>
+                            {/* Shadow */}
+                            <div className="w-3 h-1 bg-black/20 rounded-full blur-[1px]"></div>
+                        </div>
+                    </Marker>
+                )}
             </Map>
 
             {/* Navigation UI Overlay: Compass Button */}

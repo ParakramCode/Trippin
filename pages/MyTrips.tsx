@@ -3,6 +3,7 @@ import { useJourneys } from '../context/JourneyContext';
 import { Journey } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import CreateJourneyModal from '../components/CreateJourneyModal';
 
 const MyTrips: React.FC = () => {
   /**
@@ -30,6 +31,7 @@ const MyTrips: React.FC = () => {
   } = useJourneys();
   const navigate = useNavigate();
   const [filter, setFilter] = React.useState<'planned' | 'completed'>('planned');
+  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
 
   // EXPLICIT STATE OWNERSHIP:
   // - Planned tab: shows plannerJourneys (PLANNING/LIVE)
@@ -97,11 +99,14 @@ const MyTrips: React.FC = () => {
     }
   };
 
-  // Create new custom journey
-  const handleCreateJourney = () => {
-    const newJourney = createCustomJourney();
-    // Navigate to planner to edit the new journey
-    navigate(`/planner/${newJourney.id}`);
+  // Create new custom journey with modal
+  const handleCreateJourney = (name: string) => {
+    const newJourney = createCustomJourney(name);
+    setIsCreateModalOpen(false);
+
+    // Set as active journey and navigate to map editor
+    loadJourney(newJourney.id);
+    navigate('/map');
   };
 
   // Start/Stop journey (toggle live status and navigate to map)
@@ -317,10 +322,17 @@ const MyTrips: React.FC = () => {
         </div>
       </div>
 
+      {/* Create Journey Modal */}
+      <CreateJourneyModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreate={handleCreateJourney}
+      />
+
       {/* FAB: Create New Journey - Only show in Planned tab */}
       {filter === 'planned' && (
         <motion.button
-          onClick={handleCreateJourney}
+          onClick={() => setIsCreateModalOpen(true)}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           className="fixed bottom-24 right-6 w-14 h-14 bg-brand-dark text-white rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center z-50 group"
